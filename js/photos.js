@@ -43,6 +43,7 @@ window.BAF_MENU_PHOTOS = {
   "Mini Banana Cake": "assets/img/menu/mini-banana-cake.jpg",
   "Spicy Chicken Wings": "assets/img/menu/spicy-chicken-wings.jpg",
   "Beef Skewers": "assets/img/menu/beef-skewers.jpg",
-  "Mashed Kenkey": "assets/img/menu/mashed-kenkey.jpg"
+  "Mashed Kenkey": "assets/img/menu/mashed-kenkey.jpg",
+  "Kelewele": "assets/img/menu/kelewele.jpg"
 };
 window.BAF_PHOTO_CREDITS = [];
