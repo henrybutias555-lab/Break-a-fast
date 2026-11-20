@@ -38,12 +38,12 @@ window.BAF_EVENT_GROUPS = [
         id: "pkg3",
         name: "Package 3",
         summary: "6 local snacks, 5 finger foods, 10 drinks, bar set-up and dessert.",
-        includes: ["6 local snacks", "5 finger foods", "10 drinks", "Bar set-up", "Dessert: mini banana cake or tiggernut pudding"],
+        includes: ["6 local snacks", "5 finger foods", "10 drinks", "Bar set-up", "Dessert: mini banana cake or tigernut pudding"],
         picks: [
           { cat: "Local Snacks", n: 6 },
           { cat: "Finger Foods", n: 5 },
           { cat: "Drinks", n: 10 },
-          { cat: "Dessert", n: 1, from: ["Mini Banana Cake", "Tiggernut Pudding"] }
+          { cat: "Dessert", n: 1, from: ["Mini Banana Cake", "Tigernut Pudding"] }
         ],
         prices: { 50: 8500, 100: 10000, 150: 12500, 200: 14500, 250: 17500, 300: 20000, 350: 23000, 400: 25000, 450: 27000, 500: 29000 }
       }
@@ -95,8 +95,8 @@ window.BAF_EVENT_MENU = {
   "Local Drinks": ["Coconut Milk Drink", "Sobolo", "Palm Wine", "Asana", "Pito", "Zomkom", "Lamugine", "Brukina"],
   "Fresh Juices": ["Pineapple Juice", "Watermelon Juice", "Pineapple and Coconut Juice", "Mango Juice", "Pineapple and Ginger Juice", "Beetroot and Apple Juice"],
   "Local Snacks": ["Atsormor", "Plantain Chips", "Poloo", "Condensed Milk Toffee", "Kulikuli", "Tigernut", "Nkate Cake", "Egg with Pepper (Kosua ne Mako)", "Coated Groundnut", "Baked Chips", "Bankye Kaklo", "Aburo ne Nkate"],
-  "Finger Foods": ["Spring Rolls", "Meat Pie", "Ring Doughnuts", "Sausage Khebab", "Pork", "Gizzard Khebab", "Beef Skewers", "Kelewele", "Spicy Chicken Wings", "Quiche Lorraine"],
-  "Desserts": ["Tiggernut Pudding", "Mini Banana Cake", "Mashed Kenkey"]
+  "Finger Foods": ["Spring Rolls", "Meat Pie", "Ring Doughnuts", "Sausage Kebab", "Pork", "Gizzard Kebab", "Beef Skewers", "Kelewele", "Spicy Chicken Wings", "Quiche Lorraine"],
+  "Desserts": ["Tigernut Pudding", "Mini Banana Cake", "Mashed Kenkey"]
 };
 /* Which menu lists each package "pick" draws from */
 window.BAF_PICK_SOURCES = {
