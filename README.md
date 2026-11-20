@@ -36,7 +36,7 @@ Event bookings: enquiry, then confirmation and invoice, then a 40% token by Tele
 Run locally: `SIGNING_SECRET=<32+ chars> ALLOWED_ORIGINS=http://localhost:8765 node api/server.js`
 
 ## Order server hosting (Cloudflare Workers)
-The live order server runs on Cloudflare Workers (`break-a-fast-api.henrybutias555.workers.dev`), which never sleeps. The Render service `break-a-fast-api.onrender.com` runs the same code as a backup, and older Verify links still point to it.
+The live order server runs on Cloudflare Workers (`orders.break-a-fast.workers.dev`), which never sleeps. The Render service `break-a-fast-api.onrender.com` runs the same code as a backup, and older Verify links still point to it.
 
 Menu and price data is built into the Worker. **After changing `js/products.js`, `js/events-data.js` or `js/config.js`, redeploy the Worker:**
 ```
