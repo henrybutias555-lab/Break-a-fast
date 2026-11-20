@@ -6,6 +6,7 @@
    ========================================================= */
 window.BAF_MENU_PHOTOS = {
   "Spring Rolls": "assets/img/menu/spring-rolls.jpg",
-  "Coconut Milk Drink": "assets/img/menu/coconut-milk-drink.jpg"
+  "Coconut Milk Drink": "assets/img/menu/coconut-milk-drink.jpg",
+  "Sobolo": "assets/img/menu/sobolo.jpg"
 };
 window.BAF_PHOTO_CREDITS = [];
