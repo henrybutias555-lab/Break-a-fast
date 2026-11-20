@@ -51,11 +51,11 @@ window.BAF_CONFIG = {
   // Order server (seals orders so WhatsApp messages can be verified)
   apiBase: (typeof location !== "undefined" && /^(localhost|127\.0\.0\.1)$/.test(location.hostname))
     ? "http://localhost:8787"
-    : "https://orders.break-a-fast.workers.dev",
+    : "https://break-a-fast-api.onrender.com",
   // Backup order server, used automatically if the main one can't be reached
   apiFallback: (typeof location !== "undefined" && /^(localhost|127\.0\.0\.1)$/.test(location.hostname))
     ? ""
-    : "https://break-a-fast-api.onrender.com",
+    : "", // e.g. "https://orders.break-a-fast.workers.dev" (Cloudflare, currently paused)
 
   // Events & catering bookings
   eventDepositPercent: 40,
