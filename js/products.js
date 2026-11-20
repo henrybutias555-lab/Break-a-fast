@@ -53,9 +53,8 @@ window.BAF_PRODUCTS = [
     name: "Vegetable Spring Rolls (Frozen)",
     short: "Crisp, golden spring rolls packed with seasoned vegetables.",
     description:
-      "Frozen and ready to fry or bake. Ideal for home snacks, office lunches, family gatherings and events. Keep frozen until ready to cook.",
-    image: null,
-    art: "spring",
+      "Frozen and ready to fry or bake (photo shows them cooked). Ideal for home snacks, office lunches, family gatherings and events. Keep frozen until ready to cook.",
+    image: "assets/img/menu/spring-rolls.jpg",
     options: [{ label: "10 pieces", price: 40 }]
   },
   {
@@ -65,8 +64,7 @@ window.BAF_PRODUCTS = [
     short: "Vegetables with minced meat or chicken. Your choice.",
     description:
       "Our hearty spring rolls with vegetables and your choice of minced meat or chicken. Frozen and ready to fry or bake.",
-    image: null,
-    art: "spring",
+    image: "assets/img/menu/spring-rolls.jpg",
     flavours: ["Minced Meat", "Chicken"],
     flavourLabel: "Filling",
     options: [{ label: "10 pieces", price: 50 }],

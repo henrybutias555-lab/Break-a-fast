@@ -4,5 +4,7 @@
    BAF_PHOTO_CREDITS lists the source and licence of every
    photo that is not Break-a-Fast's own (shown on credits.html).
    ========================================================= */
-window.BAF_MENU_PHOTOS = {};
+window.BAF_MENU_PHOTOS = {
+  "Spring Rolls": "assets/img/menu/spring-rolls.jpg"
+};
 window.BAF_PHOTO_CREDITS = [];
