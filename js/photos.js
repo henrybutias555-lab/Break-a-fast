@@ -36,6 +36,7 @@ window.BAF_MENU_PHOTOS = {
   "Ring Doughnuts": "assets/img/menu/ring-doughnuts.jpg",
   "Sausage Kebab": "assets/img/menu/sausage-kebab.jpg",
   "Pork": "assets/img/menu/pork.jpg",
-  "Gizzard Kebab": "assets/img/menu/gizzard-kebab.jpg"
+  "Gizzard Kebab": "assets/img/menu/gizzard-kebab.jpg",
+  "Atsormor": "assets/img/menu/atsormor.jpg"
 };
 window.BAF_PHOTO_CREDITS = [];
