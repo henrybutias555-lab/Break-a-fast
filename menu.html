@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Menu & Prices | Break-a-Fast Bistro and Bar</title>
+<meta name="description" content="Full menu and prices in GH₵: specialty and classic cinnamon rolls, frozen vegetable and meat spring rolls, breakfast and lunch packs, and local and continental breakfast.">
+<meta name="theme-color" content="#3b1f14">
+<link rel="icon" href="assets/img/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Nunito:wght@400;700;800&family=Pacifico&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<script src="js/config.js" defer></script>
+<script src="js/products.js" defer></script>
+<script src="js/app.js" defer></script>
+</head>
+<body>
+<main id="main" class="wrap">
+  <div class="page-head">
+    <h1>Our Menu</h1>
+    <p>Tap any item to pick a flavour and package size, then add it to your cart. All prices are in Ghana cedis (GH₵).</p>
+  </div>
+  <nav class="cat-tabs" aria-label="Menu categories">
+    <a href="#cinnamon">🍥 Cinnamon Rolls</a>
+    <a href="#spring">🥟 Spring Rolls</a>
+    <a href="#meals">🍳 Breakfast &amp; Lunch Packs</a>
+    <a href="#breakfast">☕ Breakfast Menu</a>
+    <a href="events.html">🎉 Party &amp; Events</a>
+  </nav>
+
+  <section class="cat-block" id="cinnamon">
+    <div class="cat-head"><h2>Cinnamon Rolls</h2><span class="muted">Soft, gooey &amp; made to crave</span></div>
+    <div class="grid grid-2" data-products="cinnamon"></div>
+  </section>
+
+  <section class="cat-block" id="spring">
+    <div class="cat-head"><h2>Frozen Spring Rolls</h2><span class="muted">Ideal for home, office lunches, gatherings &amp; events</span></div>
+    <div class="grid grid-2" data-products="spring"></div>
+  </section>
+
+  <section class="cat-block" id="meals">
+    <div class="cat-head"><h2>Breakfast &amp; Lunch Packs</h2><span class="muted">Generous spreads with drinks included</span></div>
+    <div class="grid grid-3" data-products="meals"></div>
+  </section>
+
+  <section class="cat-block" id="breakfast">
+    <div class="cat-head"><h2>Breakfast Menu</h2><span class="muted">Prices on request</span></div>
+    <div class="grid grid-2">
+      <div class="panel">
+        <h3>Local</h3>
+        <div class="tags" id="bf-local"></div>
+      </div>
+      <div class="panel">
+        <h3>Continental</h3>
+        <div class="tags" id="bf-cont"></div>
+      </div>
+    </div>
+    <p style="margin-top:16px"><a class="btn btn-wa" data-wa="Hello Break-a-Fast! I'd like to ask about your breakfast menu and prices." target="_blank" rel="noopener">Ask about breakfast on WhatsApp</a></p>
+  </section>
+
+  <section class="cat-block">
+    <div class="notice info"><b>Coming soon:</b> doughnuts, meat pies, sausage rolls, mini pizza, frozen samosas, chicken wings, dessert cups, cheesecakes, cookies and a beverage line.</div>
+  </section>
+</main>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const m = window.BAF_BREAKFAST_MENU, e = BAF.esc;
+    document.getElementById("bf-local").innerHTML = m.local.map((x) => `<span>${e(x)}</span>`).join("");
+    document.getElementById("bf-cont").innerHTML = m.continental.map((x) => `<span>${e(x)}</span>`).join("");
+  });
+</script>
+</body>
+</html>

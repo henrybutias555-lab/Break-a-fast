@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cart & Checkout | Break-a-Fast Bistro and Bar</title>
+<meta name="description" content="Review your cart, enter your details and place your Break-a-Fast order. Payment by Telecel Cash.">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#3b1f14">
+<link rel="icon" href="assets/img/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Nunito:wght@400;700;800&family=Pacifico&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<script src="js/config.js" defer></script>
+<script src="js/products.js" defer></script>
+<script src="js/app.js" defer></script>
+<script src="js/checkout.js" defer></script>
+</head>
+<body class="no-float">
+<main id="main" class="wrap">
+  <div class="page-head"><h1>Checkout</h1></div>
+
+  <ol class="steps" id="steps" aria-label="Order progress">
+    <li data-s="1">Cart</li>
+    <li data-s="2">Details</li>
+    <li data-s="3">Review</li>
+    <li data-s="4">Pay</li>
+    <li data-s="5">Confirm</li>
+  </ol>
+
+  <div class="checkout">
+    <div>
+      <!-- STEP 1: CART -->
+      <section class="panel step-pane" data-pane="1" aria-labelledby="h-cart">
+        <h2 id="h-cart">1. Your cart</h2>
+        <div id="cart-lines"></div>
+        <div class="step-nav" id="cart-nav">
+          <a class="btn btn-ghost" href="menu.html">+ Add more items</a>
+          <button class="btn" type="button" data-next="2">Continue to details</button>
+        </div>
+      </section>
+
+      <!-- STEP 2: DETAILS -->
+      <section class="panel step-pane" data-pane="2" hidden aria-labelledby="h-details">
+        <h2 id="h-details">2. Your details</h2>
+        <form class="form" id="details-form" novalidate>
+          <div class="field">
+            <label for="f-name">Full name</label>
+            <input id="f-name" name="name" autocomplete="name" required>
+            <div class="err">Please enter your full name.</div>
+          </div>
+          <div class="field">
+            <label for="f-phone">Phone / WhatsApp number</label>
+            <input id="f-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="e.g. 020 123 4567" required>
+            <div class="err">Please enter a valid Ghana phone number (10 digits, e.g. 0201234567).</div>
+          </div>
+          <div class="field">
+            <label>Delivery or pick-up?</label>
+            <div class="choice">
+              <label><input type="radio" name="fulfilment" value="Delivery" checked> <span>Delivery<small>Delivery fee depends on your location and is agreed with you on WhatsApp.</small></span></label>
+              <label><input type="radio" name="fulfilment" value="Pick-up"> <span>Pick-up<small>We'll send you the pick-up point on WhatsApp.</small></span></label>
+            </div>
+          </div>
+          <div class="field" id="addr-field">
+            <label for="f-address">Delivery address</label>
+            <textarea id="f-address" name="address" autocomplete="street-address" placeholder="Area, street, house number / GPS address (e.g. GA-123-4567), nearest landmark"></textarea>
+            <div class="err">Please enter your delivery address.</div>
+          </div>
+          <div class="row-2">
+            <div class="field">
+              <label for="f-date">Preferred date</label>
+              <input id="f-date" name="date" type="date" required>
+              <div class="err">Please choose a date (today or later).</div>
+            </div>
+            <div class="field">
+              <label for="f-time">Preferred time</label>
+              <select id="f-time" name="time">
+                <option>Morning (8am to 12pm)</option>
+                <option>Afternoon (12pm to 4pm)</option>
+                <option>Evening (4pm to 7pm)</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="f-notes">Notes (optional)</label>
+            <textarea id="f-notes" name="notes" placeholder="Gift message, extra icing, allergies, etc."></textarea>
+          </div>
+          <div class="field">
+            <label>Payment method</label>
+            <div class="choice">
+              <label><input type="radio" name="payment" value="Telecel Cash" checked> <span>Telecel Cash<small>You'll get the payment number and your order reference after you place the order.</small></span></label>
+            </div>
+          </div>
+        </form>
+        <div class="step-nav">
+          <button class="btn btn-ghost" type="button" data-next="1">← Back to cart</button>
+          <button class="btn" type="button" id="to-review">Review order</button>
+        </div>
+      </section>
+
+      <!-- STEP 3: REVIEW -->
+      <section class="panel step-pane" data-pane="3" hidden aria-labelledby="h-review">
+        <h2 id="h-review">3. Review &amp; place order</h2>
+        <div id="review"></div>
+        <label class="check" style="margin:14px 0"><input type="checkbox" id="agree"> <span>I confirm my order and details are correct. I understand I'll pay by Telecel Cash using my order reference, and that delivery fees (if any) are agreed separately.</span></label>
+        <div class="step-nav">
+          <button class="btn btn-ghost" type="button" data-next="2">← Edit details</button>
+          <button class="btn" type="button" id="place" disabled>Place order &amp; get payment details</button>
+        </div>
+      </section>
+    </div>
+
+    <aside class="panel summary" aria-labelledby="h-sum">
+      <h2 id="h-sum">Order summary</h2>
+      <div id="summary"></div>
+      <p class="small muted" style="margin:12px 0 0">🔒 You'll see the Telecel Cash payment details only after your order is placed, so every payment is linked to an order reference.</p>
+    </aside>
+  </div>
+</main>
+</body>
+</html>

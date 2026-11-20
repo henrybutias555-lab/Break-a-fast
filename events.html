@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Events & Catering Packages | Break-a-Fast Bistro and Bar</title>
+<meta name="description" content="Event catering for 20 to 500 guests: local snacks, finger foods, local drinks, bar set-up, desserts and breakfast event packages. Get an instant estimate and book with a 40% deposit.">
+<meta name="theme-color" content="#3b1f14">
+<link rel="icon" href="assets/img/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Nunito:wght@400;700;800&family=Pacifico&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<script src="js/config.js" defer></script>
+<script src="js/products.js" defer></script>
+<script src="js/events-data.js" defer></script>
+<script src="js/app.js" defer></script>
+<script src="js/events.js" defer></script>
+</head>
+<body>
+<main id="main" class="wrap">
+  <div class="page-head">
+    <h1>Events &amp; Catering</h1>
+    <p>Birthdays, weddings, corporate events, bridal showers, family gatherings and church programmes. We bring the snacks, the drinks, the bar and the joy. Bulk orders of cinnamon rolls, spring rolls, pastry boxes and refreshment packs are welcome too.</p>
+  </div>
+
+  <div class="pkg-tabs" role="tablist" id="group-tabs"></div>
+  <p class="muted" id="group-intro"></p>
+  <div class="grid grid-3" id="pkg-grid"></div>
+  <ul class="small muted" id="group-notes" style="margin-top:16px"></ul>
+
+  <section class="section">
+    <div class="split">
+      <div class="panel" id="enquiry">
+        <h2>Get an estimate &amp; send an enquiry</h2>
+        <form class="form" id="event-form" novalidate>
+          <div class="field">
+            <label for="e-pkg">Package</label>
+            <select id="e-pkg" name="pkg"></select>
+          </div>
+          <div class="row-2">
+            <div class="field">
+              <label for="e-guests">Number of guests</label>
+              <select id="e-guests" name="guests"></select>
+            </div>
+            <div class="field">
+              <label for="e-type">Event type</label>
+              <select id="e-type" name="type">
+                <option>Birthday</option><option>Wedding</option><option>Corporate event</option><option>Bridal shower</option>
+                <option>Family gathering</option><option>Church programme</option><option>Other</option>
+              </select>
+            </div>
+          </div>
+          <fieldset class="field" style="border:0;padding:0;margin:0">
+            <legend style="font-weight:800;color:var(--brown);margin-bottom:6px">Optional extras</legend>
+            <div id="e-addons" style="display:grid;gap:8px"></div>
+          </fieldset>
+          <div class="row-2">
+            <div class="field">
+              <label for="e-name">Your name</label>
+              <input id="e-name" name="name" autocomplete="name" required>
+              <div class="err">Please enter your name.</div>
+            </div>
+            <div class="field">
+              <label for="e-phone">Phone / WhatsApp</label>
+              <input id="e-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" required>
+              <div class="err">Please enter a valid phone number.</div>
+            </div>
+          </div>
+          <div class="row-2">
+            <div class="field">
+              <label for="e-date">Event date</label>
+              <input id="e-date" name="date" type="date" required>
+              <div class="err">Please choose the event date.</div>
+            </div>
+            <div class="field">
+              <label for="e-venue">Venue / location</label>
+              <input id="e-venue" name="venue" placeholder="Area or venue name">
+              <div class="hint">Needed to quote transport.</div>
+            </div>
+          </div>
+          <div class="field">
+            <label for="e-msg">Message (optional)</label>
+            <textarea id="e-msg" name="message" placeholder="Preferred snacks, drinks or desserts, theme, timing, anything else"></textarea>
+          </div>
+          <div class="panel" style="background:var(--cream);box-shadow:none" id="estimate" aria-live="polite"></div>
+          <button class="btn btn-wa btn-block" type="submit">Send enquiry on WhatsApp</button>
+          <p class="small muted" style="margin:0">No payment is needed yet. We'll confirm availability first.</p>
+        </form>
+      </div>
+
+      <div style="display:grid;gap:20px">
+        <div class="panel">
+          <h2>How booking works</h2>
+          <ol class="timeline">
+            <li><div><b>Send your enquiry</b>Pick a package and guest count above, then send it to us on WhatsApp. You'll get a booking reference.</div></li>
+            <li><div><b>We confirm &amp; invoice</b>We confirm your date and send an invoice, including transport for your location.</div></li>
+            <li><div><b>Pay a 40% token to book</b>Your booking is valid once at least 40% is paid by Telecel Cash to <b data-cfg="payment.number"></b>, using your booking reference.</div></li>
+            <li><div><b>Pay the balance</b>Full payment is due at least 14 working days before the event.</div></li>
+            <li><div><b>Celebrate!</b>We set up, serve and make it memorable.</div></li>
+          </ol>
+          <div class="notice" style="margin-top:14px"><b>Please wait for our confirmation</b> before sending your 40% token, so your payment is matched to a confirmed date.</div>
+        </div>
+        <div class="panel">
+          <h3>Terms &amp; conditions</h3>
+          <ul class="small" style="padding-left:18px;margin:0">
+            <li>Bookings become valid when the client has paid at least 40% of the selected package.</li>
+            <li>Payment in full must be completed at least 14 working days before delivery.</li>
+            <li>Package prices may change over time due to changes in product prices. To avoid any increases, full payment upfront is recommended.</li>
+            <li>No refund is issued on cancellation, except where cancellation arises from a force majeure event, in which case 40% of the amount paid is refunded.</li>
+            <li>Transportation cost is not included in any package.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0">
+    <h2>Event menu choices</h2>
+    <p class="muted">Pick your favourites for your package. Tell us in your enquiry message.</p>
+    <div class="grid grid-3" id="event-menu"></div>
+  </section>
+</main>
+</body>
+</html>
