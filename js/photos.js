@@ -9,6 +9,7 @@ window.BAF_MENU_PHOTOS = {
   "Coconut Milk Drink": "assets/img/menu/coconut-milk-drink.jpg",
   "Sobolo": "assets/img/menu/sobolo.jpg",
   "Palm Wine": "assets/img/menu/palm-wine.jpg",
-  "Asana": "assets/img/menu/asana.jpg"
+  "Asana": "assets/img/menu/asana.jpg",
+  "Pito": "assets/img/menu/pito.jpg"
 };
 window.BAF_PHOTO_CREDITS = [];
