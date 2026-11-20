@@ -14,6 +14,12 @@ window.BAF_MENU_PHOTOS = {
   "Zomkom": "assets/img/menu/zomkom.jpg",
   "Lamugine": "assets/img/menu/lamugine.jpg",
   "Brukina": "assets/img/menu/brukina.jpg",
-  "Sausages & Eggs": "assets/img/menu/sausages-eggs.jpg"
+  "Sausages & Eggs": "assets/img/menu/sausages-eggs.jpg",
+  "Watermelon Juice": "assets/img/menu/watermelon-juice.jpg",
+  "Pineapple and Ginger Juice": "assets/img/menu/pineapple-and-ginger-juice.jpg",
+  "Beetroot and Apple Juice": "assets/img/menu/beetroot-and-apple-juice.jpg",
+  "Pineapple Juice": "assets/img/menu/pineapple-juice.jpg",
+  "Mango Juice": "assets/img/menu/mango-juice.jpg",
+  "Pineapple and Coconut Juice": "assets/img/menu/pineapple-and-coconut-juice.jpg"
 };
 window.BAF_PHOTO_CREDITS = [];
