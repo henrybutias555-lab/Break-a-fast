@@ -14,15 +14,44 @@ window.BAF_CONFIG = {
   instagram: "bistro_bar16",
   snapchat: "ama.serwaa16",
 
-  // ---- PAYMENT (current: Telecel Cash only) ----
-  payment: {
-    method: "Telecel Cash",
-    number: "0201745770",
-    // Name the customer will see on their phone before entering their PIN.
-    // Update this to the exact registered name on the Telecel Cash wallet.
-    accountName: "Break-a-Fast Bistro and Bar",
-    ussd: "*110#"
-  },
+  // ---- PAYMENT METHODS ----
+  // Customers choose one of these at checkout and on the events form.
+  // "accountName" is the name the payer sees before confirming. Keep it exact.
+  paymentMethods: [
+    {
+      id: "telecel",
+      name: "Telecel Cash",
+      kind: "momo",
+      number: "0201745770",
+      accountName: "Break-a-Fast Bistro and Bar",
+      ussd: "*110#",
+      color: "#e30613"
+    },
+    {
+      id: "mtn",
+      name: "MTN MoMo",
+      kind: "momo",
+      number: "0534068801",
+      accountName: "Marvelyn Boakye Yiadom",
+      ussd: "*170#",
+      color: "#ffcb05",
+      textColor: "#1a1a1a"
+    },
+    {
+      id: "bank",
+      name: "Bank transfer",
+      kind: "bank",
+      bank: "First National Bank",
+      number: "0133070116336",
+      accountName: "Marvelyn Boakye Yiadom",
+      color: "#0b4f8a"
+    }
+  ],
+
+  // Order server (seals orders so WhatsApp messages can be verified)
+  apiBase: (typeof location !== "undefined" && /^(localhost|127\.0\.0\.1)$/.test(location.hostname))
+    ? "http://localhost:8787"
+    : "https://break-a-fast-api.onrender.com",
 
   // Events & catering bookings
   eventDepositPercent: 40,

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Cart & Checkout | Break-a-Fast Bistro and Bar</title>
-<meta name="description" content="Review your cart, enter your details and place your Break-a-Fast order. Payment by Telecel Cash.">
+<meta name="description" content="Review your cart, enter your details and place your Break-a-Fast order.">
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#3b1f14">
 <link rel="icon" href="assets/img/favicon.png">
@@ -88,9 +88,8 @@
           </div>
           <div class="field">
             <label>Payment method</label>
-            <div class="choice">
-              <label><input type="radio" name="payment" value="Telecel Cash" checked> <span>Telecel Cash<small>You'll get the payment number and your order reference after you place the order.</small></span></label>
-            </div>
+            <div class="choice" id="pay-methods"></div>
+            <div class="hint">You'll get the payment details and your order reference after you place the order.</div>
           </div>
         </form>
         <div class="step-nav">
@@ -103,7 +102,7 @@
       <section class="panel step-pane" data-pane="3" hidden aria-labelledby="h-review">
         <h2 id="h-review">3. Review &amp; place order</h2>
         <div id="review"></div>
-        <label class="check" style="margin:14px 0"><input type="checkbox" id="agree"> <span>I confirm my order and details are correct. I understand I'll pay by Telecel Cash using my order reference, and that delivery fees (if any) are agreed separately.</span></label>
+        <label class="check" style="margin:14px 0"><input type="checkbox" id="agree"> <span>I confirm my order and details are correct. I understand I'll pay using my order reference, and that delivery fees (if any) are agreed separately.</span></label>
         <div class="step-nav">
           <button class="btn btn-ghost" type="button" data-next="2">← Edit details</button>
           <button class="btn" type="button" id="place" disabled>Place order &amp; get payment details</button>
@@ -114,7 +113,7 @@
     <aside class="panel summary" aria-labelledby="h-sum">
       <h2 id="h-sum">Order summary</h2>
       <div id="summary"></div>
-      <p class="small muted" style="margin:12px 0 0">🔒 You'll see the Telecel Cash payment details only after your order is placed, so every payment is linked to an order reference.</p>
+      <p class="small muted" style="margin:12px 0 0">🔒 You'll see the payment details only after your order is placed, so every payment is linked to an order reference.</p>
     </aside>
   </div>
 </main>

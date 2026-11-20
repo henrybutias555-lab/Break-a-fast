@@ -3,7 +3,7 @@
 Mobile-first static website: menu, cart, checkout, Telecel Cash payment, events & catering, about, contact.
 No build step. Open `index.html` or host the folder on any static host (GitHub Pages, Netlify, etc.).
 
-## Order process (Telecel Cash)
+## Order process
 1. **Cart**: customer picks flavours, package size and quantity.
 2. **Details**: name, phone, delivery or pick-up, date and time.
 3. **Review**: customer confirms, then places the order and gets a reference (e.g. `BAF-7K2QX`).
@@ -24,3 +24,13 @@ Event bookings: enquiry, then confirmation and invoice, then a 40% token by Tele
 
 ## Deploying on Render
 `render.yaml` is a Render Blueprint. In Render: **New → Blueprint**, connect this GitHub repo and pick the branch. The site will be at `https://break-a-fast.onrender.com` (if that name is free). To use your own domain, go to **Settings → Custom Domains** and add the DNS records Render shows at your domain registrar.
+
+## Tamper-proof orders (order server)
+`api/server.js` is a small Node service (no dependencies). For every order and event enquiry it:
+1. Re-prices everything from `js/products.js` / `js/events-data.js`, so the customer's browser can't change prices.
+2. Creates the reference (`BAF-…` / `EVT-…`) and seals the details with an HMAC signature (`SIGNING_SECRET`).
+3. Adds a **Verify link** to the WhatsApp message. Opening it shows **GENUINE** with the real details, or **NOT VALID** if anything was changed.
+
+**For the person receiving orders:** always open the Verify link, and trust it over the message text. Then check your own MoMo or bank SMS for the amount and reference before starting the order.
+
+Run locally: `SIGNING_SECRET=<32+ chars> ALLOWED_ORIGINS=http://localhost:8765 node api/server.js`

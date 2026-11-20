@@ -1,7 +1,8 @@
-/* Break-a-Fast: payment (Telecel Cash) + confirmation page */
+/* Break-a-Fast: payment + confirmation page.
+   The order was sealed by the order server; the WhatsApp message carries a Verify link. */
 document.addEventListener("DOMContentLoaded", () => {
   const { $, $$, esc, money, store, waLink, copyText, config: C } = window.BAF;
-  const PAY = C.payment;
+  const METHODS = C.paymentMethods;
   const ref = new URLSearchParams(location.search).get("ref") || "";
   const orders = store.get("baf_orders_v1", {});
   const order = orders[ref];
@@ -13,7 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
     li.classList.toggle("done", s < n);
   });
 
-  if (!order) {
+  if (!order || !order.token) {
     $("#head").innerHTML = `<h1>Order not found</h1>`;
     root.innerHTML = `<div class="panel"><p>We couldn't find this order on this device. If you already placed an order, please message us on WhatsApp with your order reference${ref ? " <b>" + esc(ref) + "</b>" : ""}.</p>
       <div class="step-nav"><a class="btn btn-ghost" href="menu.html">Back to menu</a><a class="btn btn-wa" href="${waLink("Hello Break-a-Fast! I need help with my order " + ref)}" target="_blank" rel="noopener">Chat on WhatsApp</a></div></div>`;
@@ -21,45 +22,16 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   const save = () => { orders[order.ref] = order; store.set("baf_orders_v1", orders); };
-  const d = order.customer;
+  const c = order.c;
+  let pm = METHODS.find((m) => m.id === order.pm) || METHODS[0];
   const niceDate = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-  const amount = order.total.toFixed(2).replace(/\.00$/, "");
-
-  function waMessage(pay) {
-    const lines = [
-      `*NEW ORDER: ${order.ref}*`,
-      ``,
-      ...order.items.map((i) => `• ${i.qty} × ${i.name} (${i.option}${i.flavour ? ", " + i.flavour : ""}): ${money(i.line)}`),
-      `*Total: ${money(order.total)}*`,
-      ``,
-      `*Customer*`,
-      `Name: ${d.name}`,
-      `Phone: ${d.phone}`,
-      `${d.fulfilment}${d.fulfilment === "Delivery" ? ": " + d.address : ""}`,
-      `When: ${niceDate(d.date)}, ${d.time}`,
-      d.notes ? `Notes: ${d.notes}` : null,
-      ``,
-      `*Payment: ${PAY.method}*`
-    ];
-    if (pay) {
-      lines.push(
-        `Amount sent: ${money(order.total)} to ${PAY.number}`,
-        `Transaction ID: ${pay.txn}`,
-        `Sent from: ${pay.from}${pay.sender ? " (" + pay.sender + ")" : ""}`,
-        `Reference used: ${order.ref}`,
-        ``,
-        `Please confirm my payment. Thank you!`
-      );
-    } else {
-      lines.push(`Not paid yet. I have a question before paying.`);
-    }
-    return lines.filter((l) => l !== null).join("\n");
-  }
+  const amount = String(order.tot);
+  fetch(C.apiBase + "/health").catch(() => {});
 
   function renderHead() {
     const st = order.status === "Awaiting Confirmation" ? "awaiting" : "pending";
     $("#head").innerHTML = `
-      <p class="script" style="font-size:1.2rem;margin:0">Thank you, ${esc(d.name.split(" ")[0])}!</p>
+      <p class="script" style="font-size:1.2rem;margin:0">Thank you, ${esc(c.n.split(" ")[0])}!</p>
       <h1 style="margin-bottom:6px">Order ${esc(order.ref)}</h1>
       <span class="status ${st}">${esc(order.status)}</span>`;
   }
@@ -68,133 +40,155 @@ document.addEventListener("DOMContentLoaded", () => {
     return `
       <aside class="panel summary">
         <h2>Order summary</h2>
-        ${order.items.map((i) => `<div class="sum-row small"><span>${i.qty} × ${esc(i.name)}<br><span class="muted">${esc(i.option)}${i.flavour ? " · " + esc(i.flavour) : ""}</span></span><span>${money(i.line)}</span></div>`).join("")}
-        <div class="sum-row sum-total"><span>Total</span><span>${money(order.total)}</span></div>
+        ${order.it.map((i) => `<div class="sum-row small"><span>${i[3]} × ${esc(i[0])}<br><span class="muted">${esc(i[1])}${i[2] ? " · " + esc(i[2]) : ""}</span></span><span>${money(i[4])}</span></div>`).join("")}
+        <div class="sum-row sum-total"><span>Total</span><span>${money(order.tot)}</span></div>
         <div class="review-block" style="margin-top:14px">
           <dl>
-            <dt>Name</dt><dd>${esc(d.name)}</dd>
-            <dt>Phone</dt><dd>${esc(d.phone)}</dd>
-            <dt>${esc(d.fulfilment)}</dt><dd>${d.fulfilment === "Delivery" ? esc(d.address) : "Pick-up"}</dd>
-            <dt>When</dt><dd>${niceDate(d.date)}, ${esc(d.time)}</dd>
+            <dt>Name</dt><dd>${esc(c.n)}</dd>
+            <dt>Phone</dt><dd>${esc(c.p)}</dd>
+            <dt>${esc(c.f)}</dt><dd>${c.f === "Delivery" ? esc(c.a) : "Pick-up"}</dd>
+            <dt>When</dt><dd>${niceDate(c.d)}, ${esc(c.tm)}</dd>
           </dl>
         </div>
-        ${d.fulfilment === "Delivery" ? `<p class="small muted" style="margin:0">Delivery fee is not included. We'll agree it with you on WhatsApp.</p>` : ""}
+        ${c.f === "Delivery" ? `<p class="small muted" style="margin:0">Delivery fee is not included. We'll agree it with you on WhatsApp.</p>` : ""}
       </aside>`;
+  }
+
+  function steps(m) {
+    if (m.kind === "bank") return `
+      <li><span>Open your bank app or visit your bank, and start a transfer.</span></li>
+      <li><span>Bank: <b>${esc(m.bank)}</b>. Account number: <code class="k">${esc(m.number)}</code>.</span></li>
+      <li><span>Account name: <b>${esc(m.accountName)}</b>.</span></li>
+      <li><span>Amount: <code class="k">${esc(amount)}</code>. In the reference / narration, enter <code class="k">${esc(order.ref)}</code>.</span></li>
+      <li><span>Keep the <b>transaction reference</b> from your receipt. You'll need it in the next step.</span></li>`;
+    return `
+      <li><span>Dial <code class="k">${esc(m.ussd)}</code> on your ${esc(m.name.split(" ")[0])} line.</span></li>
+      <li><span>Choose <b>${m.id === "mtn" ? "Transfer Money" : "Send Money"}</b>, then send to a <b>${esc(m.name)}</b> number.</span></li>
+      <li><span>Enter <code class="k">${esc(m.number)}</code> and confirm it.</span></li>
+      <li><span>Enter the amount <code class="k">${esc(amount)}</code>.</span></li>
+      <li><span>For reference, enter <code class="k">${esc(order.ref)}</code>.</span></li>
+      <li><span>Check that the name shown is <b>${esc(m.accountName)}</b>, then enter your PIN.</span></li>
+      <li><span>Keep the <b>Transaction ID</b> from your confirmation SMS. You'll need it in the next step.</span></li>`;
   }
 
   function renderPay() {
     setStep(4);
+    const m = pm, fg = m.textColor || "#fff";
     root.innerHTML = `
       <div class="checkout">
-        <div style="display:grid;gap:20px">
-          <section class="panel" aria-labelledby="h-pay">
-            <h2 id="h-pay">4. Pay with Telecel Cash</h2>
-            <p class="muted">Your order has been created. Send the <b>exact amount</b> below to our Telecel Cash number and use your <b>order reference</b> so we can match your payment.</p>
-            <div class="pay-card">
-              <div class="grid-pay">
-                <div class="row"><div><div class="lbl">Amount</div><div class="val">${money(order.total)}</div></div><button class="copy" data-copy="${esc(amount)}">Copy</button></div>
-                <div class="row"><div><div class="lbl">Telecel Cash number</div><div class="val">${esc(PAY.number)}</div></div><button class="copy" data-copy="${esc(PAY.number)}">Copy</button></div>
-                <div class="row"><div><div class="lbl">Reference</div><div class="val">${esc(order.ref)}</div></div><button class="copy" data-copy="${esc(order.ref)}">Copy</button></div>
-                <div><div class="lbl">Account name</div><div style="font-weight:800">${esc(PAY.accountName)}</div></div>
-              </div>
+        <section class="panel" aria-labelledby="h-pay">
+          <h2 id="h-pay">4. Pay with ${esc(m.name)}</h2>
+          <div class="pkg-tabs" role="radiogroup" aria-label="Payment method">
+            ${METHODS.map((x) => `<button type="button" role="radio" aria-selected="${x.id === m.id}" aria-checked="${x.id === m.id}" data-pm="${esc(x.id)}">${esc(x.name)}</button>`).join("")}
+          </div>
+          <p class="muted">Send the <b>exact amount</b> below and use your <b>order reference</b> so we can match your payment to your order.</p>
+          <div class="pay-card" style="background:${esc(m.color)};color:${esc(fg)}">
+            <div class="grid-pay">
+              <div class="row"><div><div class="lbl">Amount</div><div class="val">${money(order.tot)}</div></div><button class="copy" data-copy="${esc(amount)}">Copy</button></div>
+              ${m.kind === "bank" ? `<div><div class="lbl">Bank</div><div style="font-weight:800">${esc(m.bank)}</div></div>` : ""}
+              <div class="row"><div><div class="lbl">${m.kind === "bank" ? "Account number" : esc(m.name) + " number"}</div><div class="val">${esc(m.number)}</div></div><button class="copy" data-copy="${esc(m.number)}">Copy</button></div>
+              <div class="row"><div><div class="lbl">Reference</div><div class="val">${esc(order.ref)}</div></div><button class="copy" data-copy="${esc(order.ref)}">Copy</button></div>
+              <div><div class="lbl">Account name</div><div style="font-weight:800">${esc(m.accountName)}</div></div>
             </div>
-
-            <h3 style="margin-top:22px">How to send with Telecel Cash</h3>
-            <ol class="ussd-steps">
-              <li><span>Dial <code class="k">${esc(PAY.ussd)}</code> on your Telecel line.</span></li>
-              <li><span>Choose <b>Send Money</b>, then send to a <b>Telecel Cash</b> number.</span></li>
-              <li><span>Enter <code class="k">${esc(PAY.number)}</code> and confirm it.</span></li>
-              <li><span>Enter the amount <code class="k">${esc(amount)}</code>.</span></li>
-              <li><span>For reference, enter <code class="k">${esc(order.ref)}</code>.</span></li>
-              <li><span>Check that the name shown is <b>${esc(PAY.accountName)}</b>, then enter your PIN.</span></li>
-              <li><span>Keep the <b>Transaction ID</b> from your confirmation SMS. You'll need it in the next step.</span></li>
-            </ol>
-            <p class="small muted" style="margin-top:10px">Menu wording can differ slightly on your phone. Paying from MTN MoMo or AT Money? Use your network's <i>“Send to other networks”</i> option and choose Telecel.</p>
-            <div class="notice warn" style="margin-top:12px"><b>Stay safe:</b> we will never ask for your PIN. Only send money to <b>${esc(PAY.number)}</b>.</div>
-            <div class="step-nav">
-              <a class="btn btn-ghost" href="${waLink(waMessage(null))}" target="_blank" rel="noopener">Question before paying?</a>
-              <button class="btn btn-telecel" type="button" id="paid">I've sent the money →</button>
-            </div>
-          </section>
-        </div>
+          </div>
+          <h3 style="margin-top:22px">How to pay</h3>
+          <ol class="ussd-steps">${steps(m)}</ol>
+          ${m.kind === "momo" ? `<p class="small muted" style="margin-top:10px">Menu wording can differ slightly on your phone. Paying from another network? Use your network's <i>“Send to other networks”</i> option and choose ${esc(m.name.split(" ")[0])}.</p>` : ""}
+          <div class="notice warn" style="margin-top:12px"><b>Stay safe:</b> we will never ask for your PIN. Only pay to the details shown on this page.</div>
+          <div class="step-nav">
+            <a class="btn btn-ghost" href="${waLink("Hello Break-a-Fast! I have a question about my order " + order.ref + " before paying.")}" target="_blank" rel="noopener">Question before paying?</a>
+            <button class="btn" type="button" id="paid">I've sent the money →</button>
+          </div>
+        </section>
         ${summaryPanel()}
       </div>`;
     $$("[data-copy]", root).forEach((b) => b.addEventListener("click", () => copyText(b.dataset.copy, b)));
+    $$("[data-pm]", root).forEach((b) => b.addEventListener("click", () => { pm = METHODS.find((x) => x.id === b.dataset.pm); renderPay(); }));
     $("#paid").addEventListener("click", renderConfirm);
   }
 
   function renderConfirm() {
     setStep(5);
-    const p = order.payment || {};
+    const p = order.py || {}, bank = pm.kind === "bank";
     root.innerHTML = `
       <div class="checkout">
         <section class="panel" aria-labelledby="h-conf">
           <h2 id="h-conf">5. Confirm your payment</h2>
-          <p class="muted">Enter the details from your Telecel Cash confirmation SMS. We'll send everything to Break-a-Fast on WhatsApp so we can verify it and start on your order.</p>
+          <p class="muted">Enter the details from your ${bank ? "bank receipt" : esc(pm.name) + " confirmation SMS"}. We'll check them against our ${bank ? "bank statement" : "account"} before starting your order.</p>
           <form class="form" id="pay-form" novalidate>
             <div class="field">
-              <label for="p-txn">Transaction ID</label>
-              <input id="p-txn" name="txn" autocomplete="off" placeholder="From your confirmation SMS" value="${esc(p.txn || "")}" required>
-              <div class="err">Please enter the Transaction ID from your SMS.</div>
+              <label for="p-txn">${bank ? "Transaction reference" : "Transaction ID"}</label>
+              <input id="p-txn" name="txn" autocomplete="off" placeholder="${bank ? "From your bank receipt" : "From your confirmation SMS"}" value="${esc(p.txn || "")}" required>
+              <div class="err">Please enter the ${bank ? "transaction reference" : "Transaction ID"}.</div>
             </div>
             <div class="row-2">
               <div class="field">
-                <label for="p-from">Number you paid from</label>
-                <input id="p-from" name="from" type="tel" inputmode="tel" value="${esc(p.from || d.phone)}" required>
-                <div class="err">Please enter the number you paid from.</div>
+                <label for="p-from">${bank ? "Account / bank you paid from" : "Number you paid from"}</label>
+                <input id="p-from" name="from" ${bank ? "" : 'type="tel" inputmode="tel"'} value="${esc(p.from || (bank ? "" : c.p))}" required>
+                <div class="err">Please enter where you paid from.</div>
               </div>
               <div class="field">
-                <label for="p-sender">Name on that wallet</label>
-                <input id="p-sender" name="sender" value="${esc(p.sender || d.name)}">
+                <label for="p-sender">Name on that account</label>
+                <input id="p-sender" name="sender" value="${esc(p.s || c.n)}">
               </div>
             </div>
-            <label class="check"><input type="checkbox" name="ok" required> <span>I have sent <b>${money(order.total)}</b> to <b>${esc(PAY.number)}</b> with reference <b>${esc(order.ref)}</b>.</span></label>
+            <label class="check"><input type="checkbox" name="ok" required> <span>I have sent <b>${money(order.tot)}</b> by <b>${esc(pm.name)}</b> to <b>${esc(pm.number)}</b> with reference <b>${esc(order.ref)}</b>.</span></label>
             <div class="step-nav">
               <button class="btn btn-ghost" type="button" id="back">← Payment details</button>
-              <button class="btn btn-wa" type="submit" id="send" disabled>Send confirmation on WhatsApp</button>
+              <button class="btn btn-wa" type="submit" id="send" disabled>Continue</button>
             </div>
           </form>
         </section>
         ${summaryPanel()}
       </div>`;
-    const f = $("#pay-form");
-    f.ok.addEventListener("change", () => ($("#send").disabled = !f.ok.checked));
+    const f = $("#pay-form"), send = $("#send");
+    f.ok.addEventListener("change", () => (send.disabled = !f.ok.checked));
     $("#back").addEventListener("click", renderPay);
     $$("input", f).forEach((el) => el.addEventListener("input", () => el.closest(".field")?.classList.remove("invalid")));
-    f.addEventListener("submit", (e) => {
+    f.addEventListener("submit", async (e) => {
       e.preventDefault();
       const txn = f.txn.value.trim(), from = f.from.value.trim();
       f.txn.closest(".field").classList.toggle("invalid", txn.length < 4);
-      f.from.closest(".field").classList.toggle("invalid", from.replace(/\D/g, "").length < 9);
+      f.from.closest(".field").classList.toggle("invalid", from.length < 6);
       if (txn.length < 4) return f.txn.focus();
-      if (from.replace(/\D/g, "").length < 9) return f.from.focus();
-      order.payment = { method: PAY.method, txn, from, sender: f.sender.value.trim(), at: new Date().toISOString() };
-      order.status = "Awaiting Confirmation";
-      save();
-      const url = waLink(waMessage(order.payment));
-      const w = window.open(url, "_blank");
-      if (w) w.opener = null;
-      renderDone(url);
+      if (from.length < 6) return f.from.focus();
+      send.disabled = true; send.textContent = "Saving…";
+      $("#pay-err")?.remove();
+      try {
+        const r = await fetch(C.apiBase + "/api/pay", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: order.token, payment: pm.id, txn, from, sender: f.sender.value.trim() })
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.error || "Could not save your payment details.");
+        Object.assign(order, j.order, { token: j.token, verifyUrl: j.verifyUrl, message: j.message, status: "Awaiting Confirmation" });
+        save();
+        renderDone();
+      } catch (err) {
+        send.insertAdjacentHTML("afterend", `<div id="pay-err" class="notice warn" style="flex-basis:100%"><b>${esc(err.message)}</b> Please check your internet and try again.</div>`);
+        send.disabled = false; send.textContent = "Continue";
+      }
     });
   }
 
-  function renderDone(url) {
-    setStep(6);
+  function renderDone() {
     renderHead();
+    const url = waLink(order.message);
+    const m = METHODS.find((x) => x.id === order.pm) || pm;
     root.innerHTML = `
       <div class="checkout">
         <section class="panel" aria-labelledby="h-done">
-          <div class="notice ok" style="margin-bottom:16px"><b>Almost done!</b> WhatsApp should have opened with your order and payment details. Just tap <b>Send</b>.</div>
-          <h2 id="h-done">What happens next</h2>
+          <h2 id="h-done">Last step: send it to us</h2>
+          <p>Tap the button to open WhatsApp with your order and payment details, then tap <b>Send</b>.</p>
+          <a class="btn btn-wa btn-block" href="${url}" target="_blank" rel="noopener">Send on WhatsApp</a>
+          <p class="small muted" style="margin-top:10px">The message includes a secure verify link, so we can confirm your order details quickly.</p>
+          <h3 style="margin-top:22px">What happens next</h3>
           <ol class="timeline">
-            <li><div><b>We verify your payment</b>We match transaction <code class="k">${esc(order.payment.txn)}</code> to order <code class="k">${esc(order.ref)}</code>.</div></li>
-            <li><div><b>We confirm on WhatsApp</b>Your status changes to <i>Paid</i> and we confirm your ${d.fulfilment === "Delivery" ? "delivery fee and time" : "pick-up point and time"}.</div></li>
-            <li><div><b>Enjoy!</b>Freshly made and ready on ${niceDate(d.date)}, ${esc(d.time.toLowerCase())}.</div></li>
+            <li><div><b>We verify your payment</b>We match ${m.kind === "bank" ? "transfer" : "transaction"} <code class="k">${esc(order.py.txn)}</code> to order <code class="k">${esc(order.ref)}</code>.</div></li>
+            <li><div><b>We confirm on WhatsApp</b>Your order is marked <i>Paid</i> and we confirm your ${c.f === "Delivery" ? "delivery fee and time" : "pick-up point and time"}.</div></li>
+            <li><div><b>Enjoy!</b>Freshly made and ready on ${niceDate(c.d)}, ${esc(c.tm.toLowerCase())}.</div></li>
           </ol>
-          <div class="step-nav">
-            <a class="btn btn-ghost" href="menu.html">Back to menu</a>
-            <a class="btn btn-wa" href="${url}" target="_blank" rel="noopener">WhatsApp didn't open? Tap here</a>
-          </div>
+          <div class="step-nav"><a class="btn btn-ghost" href="menu.html">Back to menu</a></div>
         </section>
         ${summaryPanel()}
       </div>`;
@@ -202,6 +196,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   renderHead();
-  if (order.status === "Awaiting Confirmation" && order.payment) renderDone(waLink(waMessage(order.payment)));
+  if (order.status === "Awaiting Confirmation" && order.message) renderDone();
   else renderPay();
 });

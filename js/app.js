@@ -133,7 +133,7 @@
               <li>📞 <a href="${telLink(C.phone)}">${esc(C.phone)}</a> / <a href="${telLink(C.altPhone)}">${esc(C.altPhone)}</a></li>
               <li>💬 <a href="${waLink()}" target="_blank" rel="noopener">WhatsApp ${esc(C.phone)}</a></li>
               <li>📸 <a href="https://instagram.com/${esc(C.instagram)}" target="_blank" rel="noopener">@${esc(C.instagram)}</a></li>
-              <li>💳 Pay with ${esc(C.payment.method)}: ${esc(C.payment.number)}</li>
+              <li>💳 Telecel Cash · MTN MoMo · Bank transfer</li>
             </ul>
           </div>
         </div>

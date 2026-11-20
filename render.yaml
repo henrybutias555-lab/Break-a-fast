@@ -32,3 +32,18 @@ services:
       - type: rewrite
         source: /checkout
         destination: /checkout.html
+
+  # Order server: re-prices orders and seals them so WhatsApp messages can be verified.
+  - type: web
+    name: break-a-fast-api
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: "true"
+    startCommand: node api/server.js
+    healthCheckPath: /health
+    envVars:
+      - key: SIGNING_SECRET
+        generateValue: true
+      - key: ALLOWED_ORIGINS
+        value: https://break-a-fast.onrender.com

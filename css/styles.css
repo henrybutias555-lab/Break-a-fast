@@ -283,7 +283,7 @@ p { margin: 0 0 1em; }
 .pay-card .val { font-family: var(--font-head); font-size: 1.6rem; letter-spacing: 1px; }
 .pay-card .grid-pay { display: grid; gap: 14px; margin-top: 12px; }
 .pay-card .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: rgba(255,255,255,.12); border-radius: 12px; padding: 10px 12px; }
-.copy { background: #fff; color: var(--telecel); border: 0; border-radius: 999px; padding: 8px 14px; font: 800 .85rem var(--font-body); cursor: pointer; flex: none; }
+.copy { background: #fff; color: #1a1a1a; border: 0; border-radius: 999px; padding: 8px 14px; font: 800 .85rem var(--font-body); cursor: pointer; flex: none; }
 .ussd-steps { counter-reset: u; list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
 .ussd-steps li { counter-increment: u; display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: start; }
 .ussd-steps li::before { content: counter(u); width: 30px; height: 30px; border-radius: 50%; background: var(--brown); color: var(--cream); display: grid; place-items: center; font-weight: 800; }

@@ -2,6 +2,11 @@
 document.addEventListener("DOMContentLoaded", () => {
   const { $, $$, esc, money, store, Cart, productMedia, config: C } = window.BAF;
   const form = $("#details-form");
+  const METHODS = C.paymentMethods;
+  const methodName = (id) => (METHODS.find((m) => m.id === id) || {}).name || id;
+  $("#pay-methods").innerHTML = METHODS.map((m, i) => `<label><input type="radio" name="payment" value="${esc(m.id)}"${i === 0 ? " checked" : ""}> <span>${esc(m.name)}<small>${m.kind === "bank" ? esc(m.bank) : "Mobile money"}</small></span></label>`).join("");
+  // Wake the order server early (free hosting sleeps when idle)
+  fetch(C.apiBase + "/health").catch(() => {});
   const DRAFT_KEY = "baf_details_v1";
 
   /* ---------- steps ---------- */
@@ -71,6 +76,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const draft = store.get(DRAFT_KEY, null);
   if (draft) ["name", "phone", "address"].forEach((k) => { if (draft[k]) form[k].value = draft[k]; });
   if (draft && draft.fulfilment) form.fulfilment.value = draft.fulfilment;
+  if (draft && draft.payment && METHODS.some((m) => m.id === draft.payment)) form.payment.value = draft.payment;
 
   function toggleAddress() { $("#addr-field").hidden = !isDelivery(); renderSummary(); }
   $$("input[name=fulfilment]", form).forEach((r) => r.addEventListener("change", toggleAddress));
@@ -114,7 +120,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#to-review").addEventListener("click", () => {
     if (!validate()) return;
     const d = details();
-    store.set(DRAFT_KEY, { name: d.name, phone: d.phone, address: d.address, fulfilment: d.fulfilment });
+    store.set(DRAFT_KEY, { name: d.name, phone: d.phone, address: d.address, fulfilment: d.fulfilment, payment: d.payment });
     go(3);
   });
 
@@ -136,38 +142,47 @@ document.addEventListener("DOMContentLoaded", () => {
           <dt>${esc(d.fulfilment)}</dt><dd>${d.fulfilment === "Delivery" ? esc(d.address) : "Pick-up point shared on WhatsApp"}</dd>
           <dt>When</dt><dd>${niceDate(d.date)}, ${esc(d.time)}</dd>
           ${d.notes ? `<dt>Notes</dt><dd>${esc(d.notes)}</dd>` : ""}
-          <dt>Payment</dt><dd>${esc(d.payment)}</dd>
+          <dt>Payment</dt><dd>${esc(methodName(d.payment))}</dd>
         </dl>
       </div>
-      <div class="notice"><b>What happens next:</b> when you place your order you'll get an <b>order reference</b>. Then you'll send <b>${money(Cart.total())}</b> by Telecel Cash using that reference, and confirm your payment with us on WhatsApp.</div>`;
+      <div class="notice"><b>What happens next:</b> when you place your order you'll get an <b>order reference</b>. Then you'll send <b>${money(Cart.total())}</b> by ${esc(methodName(d.payment))} using that reference, and confirm your payment with us on WhatsApp.</div>`;
     $$("[data-goto]", $("#review")).forEach((b) => b.addEventListener("click", () => go(+b.dataset.goto)));
   }
   const agree = $("#agree"), place = $("#place");
   agree.addEventListener("change", () => (place.disabled = !agree.checked));
 
-  /* ---------- place order ---------- */
-  function makeRef() {
-    const A = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-    const rnd = new Uint32Array(5);
-    (window.crypto || window.msCrypto).getRandomValues(rnd);
-    return C.orderPrefix + "-" + Array.from(rnd, (n) => A[n % A.length]).join("");
-  }
-  place.addEventListener("click", () => {
-    if (!Cart.count() || !agree.checked) return;
-    const d = details();
-    const order = {
-      ref: makeRef(),
-      createdAt: new Date().toISOString(),
-      status: "Pending Payment",
-      items: Cart.detailed().map((i) => ({ name: i.product.name, option: i.option.label, flavour: i.flavour, qty: i.qty, unit: i.unit, line: i.line })),
-      total: Cart.total(),
-      customer: d
-    };
-    const orders = store.get("baf_orders_v1", {});
-    orders[order.ref] = order;
-    store.set("baf_orders_v1", orders);
-    Cart.clear();
-    location.href = "order.html?ref=" + encodeURIComponent(order.ref);
+  /* ---------- place order (sealed by the order server) ---------- */
+  place.addEventListener("click", async () => {
+    if (!Cart.count() || !agree.checked || place.dataset.busy) return;
+    place.dataset.busy = "1";
+    const label = place.textContent;
+    place.disabled = true;
+    place.textContent = "Placing your order…";
+    const slow = setTimeout(() => (place.textContent = "Still working… (up to a minute)"), 6000);
+    $("#place-err")?.remove();
+    try {
+      const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 90000);
+      const r = await fetch(C.apiBase + "/api/order", {
+        method: "POST", headers: { "Content-Type": "application/json" }, signal: ctrl.signal,
+        body: JSON.stringify({ items: Cart.items().map(({ productId, optionIndex, flavour, qty }) => ({ productId, optionIndex, flavour, qty })), customer: details(), payment: details().payment })
+      });
+      clearTimeout(t);
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || "Could not place your order.");
+      const orders = store.get("baf_orders_v1", {});
+      orders[j.order.ref] = { ...j.order, token: j.token, verifyUrl: j.verifyUrl, status: "Pending Payment" };
+      store.set("baf_orders_v1", orders);
+      Cart.clear();
+      location.href = "order.html?ref=" + encodeURIComponent(j.order.ref);
+    } catch (e) {
+      const msg = e.name === "AbortError" ? "The connection timed out." : e.message;
+      place.insertAdjacentHTML("afterend", `<div id="place-err" class="notice warn" style="margin-top:12px;flex-basis:100%"><b>${esc(msg)}</b> Please check your internet and try again. Your cart is still saved.</div>`);
+      place.disabled = !agree.checked;
+      place.textContent = label;
+    } finally {
+      clearTimeout(slow);
+      delete place.dataset.busy;
+    }
   });
 
   toggleAddress();

@@ -80,11 +80,16 @@
             </div>
           </div>
           <div class="field">
+            <label for="e-pay">How will you pay the token?</label>
+            <select id="e-pay" name="payment"></select>
+            <div class="hint">Payment details are sent after we confirm your date.</div>
+          </div>
+          <div class="field">
             <label for="e-msg">Message (optional)</label>
             <textarea id="e-msg" name="message" placeholder="Preferred snacks, drinks or desserts, theme, timing, anything else"></textarea>
           </div>
           <div class="panel" style="background:var(--cream);box-shadow:none" id="estimate" aria-live="polite"></div>
-          <button class="btn btn-wa btn-block" type="submit">Send enquiry on WhatsApp</button>
+          <button class="btn btn-wa btn-block" type="submit">Prepare my enquiry</button>
           <p class="small muted" style="margin:0">No payment is needed yet. We'll confirm availability first.</p>
         </form>
       </div>
@@ -95,7 +100,7 @@
           <ol class="timeline">
             <li><div><b>Send your enquiry</b>Pick a package and guest count above, then send it to us on WhatsApp. You'll get a booking reference.</div></li>
             <li><div><b>We confirm &amp; invoice</b>We confirm your date and send an invoice, including transport for your location.</div></li>
-            <li><div><b>Pay a 40% token to book</b>Your booking is valid once at least 40% is paid by Telecel Cash to <b data-cfg="payment.number"></b>, using your booking reference.</div></li>
+            <li><div><b>Pay a 40% token to book</b>Your booking is valid once at least 40% is paid by Telecel Cash, MTN MoMo or bank transfer, using your booking reference.</div></li>
             <li><div><b>Pay the balance</b>Full payment is due at least 14 working days before the event.</div></li>
             <li><div><b>Celebrate!</b>We set up, serve and make it memorable.</div></li>
           </ol>

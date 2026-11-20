@@ -4,6 +4,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const G = window.BAF_EVENT_GROUPS;
   const DEP = C.eventDepositPercent / 100;
   const f = $("#event-form");
+  f.payment.innerHTML = C.paymentMethods.map((m) => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join("");
+  fetch(C.apiBase + "/health").catch(() => {});
   let group = G[0];
 
   const allPkgs = G.flatMap((g) => g.packages.map((p) => ({ ...p, group: g })));
@@ -112,13 +114,7 @@ document.addEventListener("DOMContentLoaded", () => {
   f.date.min = d.toISOString().slice(0, 10);
   $$("input", f).forEach((el) => el.addEventListener("input", () => el.closest(".field")?.classList.remove("invalid")));
 
-  function makeRef() {
-    const A = "ABCDEFGHJKMNPQRSTUVWXYZ23456789", r = new Uint32Array(5);
-    crypto.getRandomValues(r);
-    return "EVT-" + Array.from(r, (n) => A[n % A.length]).join("");
-  }
-
-  f.addEventListener("submit", (ev) => {
+  f.addEventListener("submit", async (ev) => {
     ev.preventDefault();
     const checks = {
       name: f.name.value.trim().length >= 2,
@@ -129,29 +125,27 @@ document.addEventListener("DOMContentLoaded", () => {
     Object.entries(checks).forEach(([k, ok]) => { f[k].closest(".field").classList.toggle("invalid", !ok); if (!ok && !first) first = f[k]; });
     if (first) return first.focus();
 
-    const e = calc(), ref = makeRef();
-    const when = new Date(f.date.value + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-    const lines = [
-      `*EVENT ENQUIRY: ${ref}*`,
-      ``,
-      `Event: ${f.type.value}`,
-      `Date: ${when}`,
-      `Venue: ${f.venue.value.trim() || "To be shared"}`,
-      `Package: ${e ? e.p.group.name + " / " + e.p.name : "Custom / bulk order"}`,
-      `Guests: ${f.guests.value}`,
-      ...(e ? chosenAddons().map((a) => `Extra: ${a.name} (${money(a.price)})`) : []),
-      e ? `Estimated total: ${money(e.total)} (excl. transport)` : null,
-      e ? `${C.eventDepositPercent}% token: ${money(e.deposit)}` : null,
-      ``,
-      `Name: ${f.name.value.trim()}`,
-      `Phone: ${f.phone.value.trim()}`,
-      f.message.value.trim() ? `Message: ${f.message.value.trim()}` : null,
-      ``,
-      `Please confirm availability and send my invoice. I'll pay the token by ${C.payment.method} after your confirmation.`
-    ].filter((l) => l !== null);
-    const w = window.open(waLink(lines.join("\n")), "_blank");
-    if (w) w.opener = null;
-    BAF.toast(`Enquiry ${ref} ready. Tap <b>Send</b> in WhatsApp.`);
+    const btn = $("button[type=submit]", f), label = btn.textContent;
+    btn.disabled = true; btn.textContent = "Preparing your enquiry…";
+    $("#ev-result")?.remove();
+    try {
+      const r = await fetch(C.apiBase + "/api/event", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pkg: f.pkg.value, guests: f.guests.value, addons: chosenAddons().map((a) => a.id),
+          type: f.type.value, name: f.name.value, phone: f.phone.value, date: f.date.value,
+          venue: f.venue.value, message: f.message.value, payment: f.payment.value
+        })
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || "Could not prepare your enquiry.");
+      btn.insertAdjacentHTML("afterend", `<div id="ev-result" class="notice ok"><b>Enquiry ${esc(j.enquiry.ref)} is ready.</b> Tap below to send it to us on WhatsApp.<a class="btn btn-wa btn-block" style="margin-top:10px" href="${waLink(j.message)}" target="_blank" rel="noopener">Open WhatsApp &amp; send</a></div>`);
+      $("#ev-result").scrollIntoView({ behavior: "smooth", block: "center" });
+    } catch (err) {
+      btn.insertAdjacentHTML("afterend", `<div id="ev-result" class="notice warn"><b>${esc(err.message)}</b> Please check your internet and try again.</div>`);
+    } finally {
+      btn.disabled = false; btn.textContent = label;
+    }
   });
 
   /* ---------- event menu ---------- */
