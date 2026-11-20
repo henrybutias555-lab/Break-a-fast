@@ -51,7 +51,7 @@ window.BAF_CONFIG = {
   // Order server (seals orders so WhatsApp messages can be verified)
   apiBase: (typeof location !== "undefined" && /^(localhost|127\.0\.0\.1)$/.test(location.hostname))
     ? "http://localhost:8787"
-    : "https://break-a-fast-api.onrender.com",
+    : "https://break-a-fast-api.henrybutias555.workers.dev",
 
   // Events & catering bookings
   eventDepositPercent: 40,

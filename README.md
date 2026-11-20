@@ -34,3 +34,13 @@ Event bookings: enquiry, then confirmation and invoice, then a 40% token by Tele
 **For the person receiving orders:** always open the Verify link, and trust it over the message text. Then check your own MoMo or bank SMS for the amount and reference before starting the order.
 
 Run locally: `SIGNING_SECRET=<32+ chars> ALLOWED_ORIGINS=http://localhost:8765 node api/server.js`
+
+## Order server hosting (Cloudflare Workers)
+The live order server runs on Cloudflare Workers (`break-a-fast-api.henrybutias555.workers.dev`), which never sleeps. The Render service `break-a-fast-api.onrender.com` runs the same code as a backup, and older Verify links still point to it.
+
+Menu and price data is built into the Worker. **After changing `js/products.js`, `js/events-data.js` or `js/config.js`, redeploy the Worker:**
+```
+node api/build-worker.js
+python3 api/deploy_cloudflare.py   # needs a Cloudflare token (Workers Scripts: Edit) and a Render API key
+```
+The deploy script copies `SIGNING_SECRET` and `ALERT_KEY`/`ALERT_URL` from the Render service, so links work on both.
