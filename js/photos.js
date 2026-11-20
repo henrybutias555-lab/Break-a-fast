@@ -29,6 +29,13 @@ window.BAF_MENU_PHOTOS = {
   "Egg with Pepper (Kosua ne Mako)": "assets/img/menu/egg-with-pepper-kosua-ne-mako.jpg",
   "Coated Groundnut": "assets/img/menu/coated-groundnut.jpg",
   "Poloo": "assets/img/menu/poloo.jpg",
-  "Kulikuli": "assets/img/menu/kulikuli.jpg"
+  "Kulikuli": "assets/img/menu/kulikuli.jpg",
+  "Bankye Kaklo": "assets/img/menu/bankye-kaklo.jpg",
+  "Aburo ne Nkate": "assets/img/menu/aburo-ne-nkate.jpg",
+  "Meat Pie": "assets/img/menu/meat-pie.jpg",
+  "Ring Doughnuts": "assets/img/menu/ring-doughnuts.jpg",
+  "Sausage Kebab": "assets/img/menu/sausage-kebab.jpg",
+  "Pork": "assets/img/menu/pork.jpg",
+  "Gizzard Kebab": "assets/img/menu/gizzard-kebab.jpg"
 };
 window.BAF_PHOTO_CREDITS = [];
