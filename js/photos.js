@@ -41,6 +41,7 @@ window.BAF_MENU_PHOTOS = {
   "Quiche Lorraine": "assets/img/menu/quiche-lorraine.jpg",
   "Tigernut Pudding": "assets/img/menu/tigernut-pudding.jpg",
   "Mini Banana Cake": "assets/img/menu/mini-banana-cake.jpg",
-  "Spicy Chicken Wings": "assets/img/menu/spicy-chicken-wings.jpg"
+  "Spicy Chicken Wings": "assets/img/menu/spicy-chicken-wings.jpg",
+  "Beef Skewers": "assets/img/menu/beef-skewers.jpg"
 };
 window.BAF_PHOTO_CREDITS = [];
