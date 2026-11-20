@@ -12,6 +12,17 @@ document.addEventListener("DOMContentLoaded", () => {
   const pkgById = (id) => allPkgs.find((p) => p.id === id);
   const fromPrice = (p) => Math.min(...Object.values(p.prices));
 
+  const MENU = window.BAF_EVENT_MENU, SRC = window.BAF_PICK_SOURCES;
+  const optionsFor = (pk) => pk.from || (SRC[pk.cat] || []).flatMap((c) => MENU[c] || []);
+  function pkgIncludes(p) {
+    if (!p.picks) return p.includes.map((i) => `<li>${esc(i)}</li>`).join("");
+    return p.picks.map((pk) => {
+      if (pk.fixed) return `<li><b>${esc(pk.cat)}:</b> ${pk.fixed.map(esc).join(" &amp; ")}</li>`;
+      if (pk.from) return `<li><b>${esc(pk.cat)}:</b> ${pk.from.map(esc).join(" or ")}</li>`;
+      return `<li><b>${pk.n} ${esc(pk.cat)}</b>, chosen from:<div class="small" style="color:var(--ink);margin:2px 0 4px">${optionsFor(pk).map(esc).join(" · ")}</div></li>`;
+    }).join("") + `<li><b>Bar set-up</b></li>`;
+  }
+
   /* ---------- tabs + cards ---------- */
   $("#group-tabs").innerHTML = G.map((g) => `<button role="tab" type="button" data-g="${g.id}">${esc(g.name)}</button>`).join("");
   $$("#group-tabs button").forEach((b) => b.addEventListener("click", () => showGroup(b.dataset.g)));
@@ -21,11 +32,12 @@ document.addEventListener("DOMContentLoaded", () => {
     $$("#group-tabs button").forEach((b) => b.setAttribute("aria-selected", b.dataset.g === group.id));
     $("#group-intro").textContent = group.intro;
     $("#group-notes").innerHTML = group.notes.map((n) => `<li>${esc(n)}</li>`).join("");
+    $("#menu-section").hidden = !group.packages.some((p) => p.picks);
     $("#pkg-grid").innerHTML = group.packages.map((p) => `
       <article class="card pkg">
         <div class="head">${p.popular ? `<span class="price-chip" style="float:right">Popular</span>` : ""}<h3>${esc(p.name)}</h3><p>From ${money(fromPrice(p))}</p></div>
         <div class="card-body">
-          <ul>${p.includes.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>
+          <ul>${pkgIncludes(p)}</ul>
           <details class="more"><summary>Prices by guest count</summary>
             <table class="price-table"><thead><tr><th>Guests</th><th>Price</th></tr></thead><tbody>
             ${Object.entries(p.prices).map(([g, v]) => `<tr><td>${g}</td><td>${money(v)}</td></tr>`).join("")}
@@ -70,7 +82,29 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!p) { f.guests.innerHTML = ["Under 50", "50 to 100", "100 to 200", "200 to 500", "500+"].map((x) => `<option>${x}</option>`).join(""); return; }
     f.guests.innerHTML = Object.keys(p.prices).map((g) => `<option${String(g) === String(sel) ? " selected" : ""}>${g}</option>`).join("");
   }
+  function fillPicks() {
+    const p = currentPkg(), box = $("#e-picks");
+    if (!p || !p.picks) { box.innerHTML = ""; return; }
+    box.innerHTML = `<p style="margin:0;font-weight:800;color:var(--brown)">Choose your menu <span class="muted small" style="font-weight:400">(optional: skip any and we'll suggest)</span></p>` +
+      p.picks.filter((pk) => pk.n).map((pk) => `
+      <fieldset class="field" style="border:1px solid var(--line);border-radius:12px;padding:12px;margin:0" data-pick="${esc(pk.cat)}" data-n="${pk.n}">
+        <legend style="font-weight:800;color:var(--brown);padding:0 6px">${esc(pk.cat)}: pick ${pk.n} <span class="muted small" data-count>(0 of ${pk.n})</span></legend>
+        <div class="tags">${optionsFor(pk).map((o) => `<label style="cursor:pointer"><input type="checkbox" value="${esc(o)}" style="accent-color:var(--berry)"> ${esc(o)}</label>`).join("")}</div>
+      </fieldset>`).join("");
+    $$("fieldset[data-pick]", box).forEach((fs) => {
+      const n = +fs.dataset.n, boxes = $$("input", fs);
+      const upd = () => {
+        const k = boxes.filter((b) => b.checked).length;
+        $("[data-count]", fs).textContent = `(${k} of ${n})`;
+        boxes.forEach((b) => { b.disabled = !b.checked && k >= n; b.parentElement.style.opacity = b.disabled ? 0.45 : 1; });
+      };
+      boxes.forEach((b) => b.addEventListener("change", upd));
+    });
+  }
+  const chosenPicks = () => $$("#e-picks fieldset[data-pick]").map((fs) => [fs.dataset.pick, $$("input:checked", fs).map((b) => b.value)]);
+
   function fillAddons(g) {
+    setTimeout(fillPicks);
     $("#e-addons").innerHTML = g
       ? g.addons.map((a) => `<label class="check" style="font-weight:700"><input type="checkbox" name="addon" value="${a.id}"> <span>${esc(a.name)} <span class="muted">+${money(a.price)}</span></span></label>`).join("")
       : `<p class="small muted" style="margin:0">Tell us what you need in the message.</p>`;
@@ -132,7 +166,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const r = await fetch(C.apiBase + "/api/event", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          pkg: f.pkg.value, guests: f.guests.value, addons: chosenAddons().map((a) => a.id),
+          pkg: f.pkg.value, guests: f.guests.value, addons: chosenAddons().map((a) => a.id), picks: chosenPicks(),
           type: f.type.value, name: f.name.value, phone: f.phone.value, date: f.date.value,
           venue: f.venue.value, message: f.message.value, payment: f.payment.value
         })
@@ -148,9 +182,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  /* ---------- event menu ---------- */
-  $("#event-menu").innerHTML = Object.entries(window.BAF_EVENT_MENU)
+  /* ---------- event menu (exact names from the menu document) ---------- */
+  $("#event-menu").innerHTML = Object.entries(MENU)
     .map(([k, v]) => `<div class="panel"><h3>${esc(k)}</h3><div class="tags">${v.map((x) => `<span>${esc(x)}</span>`).join("")}</div></div>`).join("");
+  $("#dessert-note").textContent = window.BAF_DESSERT_NOTE || "";
 
   showGroup(new URLSearchParams(location.search).get("group") || G[0].id);
 });

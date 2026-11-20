@@ -192,11 +192,23 @@ function buildEvent(b) {
   need(validDate(b.date), "Please choose a valid event date.");
   need(method(b.payment), "Please choose a payment method.");
   const tot = base + addons.reduce((s, a) => s + a[1], 0);
+  const MENU = W.BAF_EVENT_MENU, SRC = W.BAF_PICK_SOURCES;
+  const picks = [];
+  if (pkg && pkg.picks) {
+    const want = Array.isArray(b.picks) ? b.picks : [];
+    for (const pk of pkg.picks) {
+      if (pk.fixed) { picks.push([pk.cat, pk.fixed, true]); continue; }
+      const opts = pk.from || (SRC[pk.cat] || []).flatMap((c) => MENU[c] || []);
+      const got = (want.find((w) => Array.isArray(w) && w[0] === pk.cat) || [])[1];
+      const chosen = [...new Set((Array.isArray(got) ? got : []).filter((x) => opts.includes(x)))].slice(0, pk.n);
+      picks.push([pk.cat, chosen, false, pk.n]);
+    }
+  }
   return {
     t: "e", ref: makeRef("EVT"), at: new Date().toISOString(),
     g: pkg ? g.name : "", pk: pkg ? pkg.name : "Custom / bulk order", gu: guests, ad: addons,
     tot, dep: pkg ? Math.round(tot * C.eventDepositPercent) / 100 : 0,
-    ty: str(b.type, 40) || "Other", n: name, p: phone, d: b.date, v: str(b.venue, 120), m: str(b.message, 600),
+    pi: picks, ty: str(b.type, 40) || "Other", n: name, p: phone, d: b.date, v: str(b.venue, 120), m: str(b.message, 600),
     pm: b.payment
   };
 }
@@ -204,6 +216,8 @@ function buildEvent(b) {
 const unitOf = (i) => (i[4] != null && i[3] ? i[4] / i[3] : null);
 const itemTitle = (i) => `${i[0]}${i[2] ? " (" + i[2] + ")" : ""}`;
 const itemCalc = (i) => unitOf(i) != null ? `${i[3]} × ${i[1]} at ${money(unitOf(i))} = ${money(i[4])}` : `${i[3]} × ${i[1]}`;
+
+const pickLine = (p) => p[2] ? `${p[0]}: ${p[1].join(", ")}` : `${p[0]} (${p[1].length} of ${p[3]}): ${p[1].length ? p[1].join(", ") : "not chosen yet, please suggest"}${p[1].length && p[1].length < p[3] ? " + please suggest the rest" : ""}`;
 
 /* ---------- WhatsApp text (built server-side; the Verify link is what counts) ---------- */
 function verifyLine(url) {
@@ -225,6 +239,7 @@ function eventText(e, url) {
   const m = method(e.pm);
   const L = [`*EVENT ENQUIRY: ${e.ref}*`, ``, `Event: ${e.ty}`, `Date: ${niceDate(e.d)}`, `Venue: ${e.v || "To be shared"}`,
     `Package: ${e.g ? e.g + " / " : ""}${e.pk}`, `Guests: ${e.gu}`, ...e.ad.map((a) => `Extra: ${a[0]} (${money(a[1])})`)];
+  if (e.pi && e.pi.length) { L.push(``, `*Menu choices*`); for (const p of e.pi) L.push(pickLine(p)); L.push(`Bar set-up`); }
   if (e.tot) L.push(`Estimated total: ${money(e.tot)} (excl. transport)`, `${C.eventDepositPercent}% token: ${money(e.dep)}`);
   L.push(``, `Name: ${e.n}`, `Phone: ${e.p}`);
   if (e.m) L.push(`Message: ${e.m}`);
@@ -288,6 +303,7 @@ function alertHtml(title, color, x, url) {
   } else {
     rows = row("Event", esc(x.ty)) + row("Date", esc(niceDate(x.d))) + row("Venue", esc(x.v || "To be shared")) + row("Package", esc((x.g ? x.g + " / " : "") + x.pk)) + row("Guests", esc(x.gu)) +
       x.ad.map((a) => row("Extra", `${esc(a[0])} · ${money(a[1])}`)).join("") +
+      (x.pi || []).map((p) => row(p[0] + (p[2] ? "" : ` (${p[1].length} of ${p[3]})`), esc(p[1].length ? p[1].join(", ") : "Not chosen yet, please suggest"))).join("") +
       (x.tot ? row("Estimated total", `<b>${money(x.tot)}</b> (excl. transport)`) + row(`${C.eventDepositPercent}% token`, `<b>${money(x.dep)}</b>`) : row("Price", "Custom quote needed")) +
       row("Name", esc(x.n)) + row("Phone", `<a href="tel:${esc(x.p)}">${esc(x.p)}</a> · <a href="https://wa.me/233${esc(x.p.slice(1))}">WhatsApp</a>`) + (x.m ? row("Message", esc(x.m)) : "") + row("Preferred payment", esc(method(x.pm).name));
   }

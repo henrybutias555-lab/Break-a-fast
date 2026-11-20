@@ -13,6 +13,11 @@ window.BAF_EVENT_GROUPS = [
         name: "Package 1",
         summary: "5 local snacks, 2 finger foods (spring rolls & kelewele), 7 drinks, bar set-up.",
         includes: ["5 local snacks", "2 finger foods: spring rolls & kelewele", "7 drinks", "Bar set-up"],
+        picks: [
+          { cat: "Local Snacks", n: 5 },
+          { cat: "Finger Foods", fixed: ["Spring Rolls", "Kelewele"] },
+          { cat: "Drinks", n: 7 }
+        ],
         prices: { 50: 5300, 100: 6000, 150: 7300, 200: 8300, 250: 9300, 300: 10300, 350: 11300, 400: 12300, 450: 13300, 500: 13600 }
       },
       {
@@ -20,6 +25,12 @@ window.BAF_EVENT_GROUPS = [
         name: "Package 2",
         summary: "5 local snacks, 4 finger foods, 8 drinks, bar set-up and dessert.",
         includes: ["5 local snacks", "4 finger foods", "8 drinks", "Bar set-up", "Dessert: creamy mashed kenkey in customised cups"],
+        picks: [
+          { cat: "Local Snacks", n: 5 },
+          { cat: "Finger Foods", n: 4 },
+          { cat: "Drinks", n: 8 },
+          { cat: "Dessert", fixed: ["Creamy Mashed Kenkey (in customised cups)"] }
+        ],
         prices: { 50: 8000, 100: 10000, 150: 12000, 200: 14000, 250: 16500, 300: 18500, 350: 20000, 400: 23000, 450: 25000, 500: 27000 },
         popular: true
       },
@@ -27,7 +38,13 @@ window.BAF_EVENT_GROUPS = [
         id: "pkg3",
         name: "Package 3",
         summary: "6 local snacks, 5 finger foods, 10 drinks, bar set-up and dessert.",
-        includes: ["6 local snacks", "5 finger foods", "10 drinks", "Bar set-up", "Dessert: mini banana cake or tigernut pudding"],
+        includes: ["6 local snacks", "5 finger foods", "10 drinks", "Bar set-up", "Dessert: mini banana cake or tiggernut pudding"],
+        picks: [
+          { cat: "Local Snacks", n: 6 },
+          { cat: "Finger Foods", n: 5 },
+          { cat: "Drinks", n: 10 },
+          { cat: "Dessert", n: 1, from: ["Mini Banana Cake", "Tiggernut Pudding"] }
+        ],
         prices: { 50: 8500, 100: 10000, 150: 12500, 200: 14500, 250: 17500, 300: 20000, 350: 23000, 400: 25000, 450: 27000, 500: 29000 }
       }
     ],
@@ -72,11 +89,20 @@ window.BAF_EVENT_GROUPS = [
   }
 ];
 
-/* Menu choices for event packages */
+/* Menu for event packages: names exactly as in the Break-a-Fast menu document.
+   "Drinks" in a package are chosen from Local Drinks and Fresh Juices. */
 window.BAF_EVENT_MENU = {
-  "Local Drinks": ["Coconut milk drink", "Sobolo", "Palm wine", "Asana", "Pito", "Zomkom", "Lamugine", "Brukina"],
-  "Local Snacks": ["Atsormor", "Plantain chips", "Poloo", "Condensed milk toffee", "Kulikuli", "Tigernut", "Nkate cake", "Egg with pepper (Kosua ne mako)", "Coated groundnut", "Baked chips", "Bankye kaklo", "Aburo ne nkate"],
-  "Finger Foods": ["Spring rolls", "Meat pie", "Ring doughnuts", "Sausage kebab", "Pork", "Gizzard kebab", "Beef skewers", "Kelewele", "Spicy chicken wings", "Quiche Lorraine"],
-  "Fresh Juices": ["Pineapple", "Watermelon", "Pineapple & coconut", "Mango", "Pineapple & ginger", "Beetroot & apple"],
-  "Desserts (GH₵10 each)": ["Tigernut pudding", "Mini banana cake", "Mashed kenkey"]
+  "Local Drinks": ["Coconut Milk Drink", "Sobolo", "Palm Wine", "Asana", "Pito", "Zomkom", "Lamugine", "Brukina"],
+  "Fresh Juices": ["Pineapple Juice", "Watermelon Juice", "Pineapple and Coconut Juice", "Mango Juice", "Pineapple and Ginger Juice", "Beetroot and Apple Juice"],
+  "Local Snacks": ["Atsormor", "Plantain Chips", "Poloo", "Condensed Milk Toffee", "Kulikuli", "Tigernut", "Nkate Cake", "Egg with Pepper (Kosua ne Mako)", "Coated Groundnut", "Baked Chips", "Bankye Kaklo", "Aburo ne Nkate"],
+  "Finger Foods": ["Spring Rolls", "Meat Pie", "Ring Doughnuts", "Sausage Khebab", "Pork", "Gizzard Khebab", "Beef Skewers", "Kelewele", "Spicy Chicken Wings", "Quiche Lorraine"],
+  "Desserts": ["Tiggernut Pudding", "Mini Banana Cake", "Mashed Kenkey"]
 };
+/* Which menu lists each package "pick" draws from */
+window.BAF_PICK_SOURCES = {
+  "Local Snacks": ["Local Snacks"],
+  "Finger Foods": ["Finger Foods"],
+  "Drinks": ["Local Drinks", "Fresh Juices"],
+  "Dessert": ["Desserts"]
+};
+window.BAF_DESSERT_NOTE = "Desserts can also be ordered separately: GH₵10 each.";
