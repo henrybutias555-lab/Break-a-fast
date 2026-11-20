@@ -27,6 +27,7 @@
     <a href="#spring">🥟 Spring Rolls</a>
     <a href="#meals">🍳 Breakfast &amp; Lunch Packs</a>
     <a href="#breakfast">☕ Breakfast Menu</a>
+    <a href="#more">🍩 More from Our Kitchen</a>
     <a href="events.html">🎉 Party &amp; Events</a>
   </nav>
 
@@ -60,8 +61,10 @@
     <p style="margin-top:16px"><a class="btn btn-wa" data-wa="Hello Break-a-Fast! I'd like to ask about your breakfast menu and prices." target="_blank" rel="noopener">Ask about breakfast on WhatsApp</a></p>
   </section>
 
-  <section class="cat-block">
-    <div class="notice info"><b>Coming soon:</b> doughnuts, meat pies, sausage rolls, mini pizza, frozen samosas, chicken wings, dessert cups, cheesecakes, cookies and a beverage line.</div>
+  <section class="cat-block" id="more">
+    <div class="cat-head"><h2>More from Our Kitchen</h2><span class="muted">Prices on request</span></div>
+    <div class="panel"><div class="menu-tiles" id="more-tiles"></div></div>
+    <p style="margin-top:16px"><a class="btn btn-wa" data-wa="Hello Break-a-Fast! I'd like to order from your kitchen menu (doughnuts, meat pies, pizza, etc.). Please share prices." target="_blank" rel="noopener">Order or ask prices on WhatsApp</a></p>
   </section>
 </main>
 <script>
@@ -73,6 +76,8 @@
       : `<figure class="tile no-photo"><div class="ph" aria-hidden="true">${e(x.charAt(0))}</div><figcaption>${e(x)}</figcaption></figure>`;
     document.getElementById("bf-local").innerHTML = m.local.map(tile).join("");
     document.getElementById("bf-cont").innerHTML = m.continental.map(tile).join("");
+    document.getElementById("more-tiles").innerHTML = (window.BAF_MORE_MENU || []).map(tile).join("");
+    BAF.jumpToHash();
   });
 </script>
 </body>

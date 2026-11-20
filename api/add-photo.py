@@ -20,7 +20,9 @@ p = os.path.join(ROOT, "js", "photos.js")
 js = open(p).read()
 m = re.search(r"window\.BAF_MENU_PHOTOS = (\{.*?\});", js, re.S)
 photos = json.loads(m.group(1))
+photos = {k: v.split("?")[0] for k, v in photos.items()}
 photos[name] = rel
 block = "window.BAF_MENU_PHOTOS = " + json.dumps(photos, indent=2, ensure_ascii=False) + ";"
 open(p, "w").write(js[:m.start()] + block + js[m.end():])
+import subprocess; subprocess.run(["python3", os.path.join(ROOT, "api", "version-images.py")], check=True)
 print("added", name, "->", rel, os.path.getsize(os.path.join(ROOT, rel)) // 1024, "KB")

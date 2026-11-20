@@ -308,8 +308,24 @@
   }
   const wake = () => [C.apiBase, C.apiFallback].filter(Boolean).forEach((b) => fetch(b + "/health").catch(() => {}));
 
+  // Scroll to #section once dynamic content exists (QR codes link straight to sections)
+  function jumpToHash() {
+    const id = decodeURIComponent(location.hash.slice(1));
+    if (!id) return;
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (id === "local-bar" || id === "menu-section") { const ms = document.getElementById("menu-section"); if (ms) ms.hidden = false; }
+    // re-align a few times while photos and fonts load, unless the visitor has started scrolling
+    let userMoved = false;
+    const stop = () => (userMoved = true);
+    ["touchstart", "wheel", "keydown"].forEach((ev) => window.addEventListener(ev, stop, { once: true, passive: true }));
+    const go = () => { if (!userMoved) el.scrollIntoView({ block: "start" }); };
+    [50, 400, 1000, 2000].forEach((t) => setTimeout(go, t));
+    window.addEventListener("load", go, { once: true });
+  }
+
   /* ---------- public API ---------- */
-  window.BAF = { $, $$, esc, money, store, waLink, telLink, Cart, productCard, productMedia, bindProductOpeners, openProduct, toast, copyText, api, wake, config: C, products: P };
+  window.BAF = { $, $$, esc, money, store, waLink, telLink, Cart, productCard, productMedia, bindProductOpeners, openProduct, toast, copyText, api, wake, jumpToHash, config: C, products: P };
 
   document.addEventListener("DOMContentLoaded", () => {
     renderLayout();
@@ -325,6 +341,7 @@
       el.innerHTML = list.map(productCard).join("");
     });
     bindProductOpeners();
+    jumpToHash();
     const q = new URLSearchParams(location.search).get("product");
     if (q) openProduct(q);
   });

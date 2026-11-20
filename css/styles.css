@@ -350,3 +350,5 @@ body.no-float .wa-float { display: none; }
 .credits-list { list-style: none; padding: 0; display: grid; gap: 10px; }
 .credits-list li { display: grid; grid-template-columns: 64px 1fr; gap: 12px; align-items: center; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 8px; font-size: .9rem; }
 .credits-list img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; }
+
+#event-menu .panel, #local-bar { scroll-margin-top: 80px; }

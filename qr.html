@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QR Codes | Break-a-Fast Bistro and Bar</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#3b1f14">
+<link rel="icon" href="assets/img/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Nunito:wght@400;700;800&family=Pacifico&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<script src="js/config.js" defer></script>
+<script src="js/products.js" defer></script>
+<script src="js/app.js" defer></script>
+<style>
+  .qr-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+  .qr-card { margin: 0; background: #fff; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  .qr-card img { width: 100%; display: block; }
+  .qr-card figcaption { padding: 8px 12px; font-weight: 700; text-align: center; }
+  @media print {
+    .site-header, .site-footer, .wa-float, .page-head, .no-print, .qr-card figcaption { display: none !important; }
+    body { background: #fff; }
+    .qr-grid { grid-template-columns: repeat(2, 1fr); gap: 10mm; }
+    .qr-card { break-inside: avoid; border: 0; }
+  }
+</style>
+</head>
+<body class="no-float">
+<main id="main" class="wrap">
+  <div class="page-head">
+    <h1>Section QR codes</h1>
+    <p>Each code opens one section of the menu directly. Print them for tables, the bar and the counter, or download a single code.</p>
+    <p class="no-print"><button class="btn" onclick="window.print()">Print all</button></p>
+  </div>
+  <div class="qr-grid">
+    <figure class="qr-card"><img src="assets/qr/qr-local-bar.png" alt="QR code for Local Bar" loading="lazy"><figcaption><a href="assets/qr/qr-local-bar.png" download>Download</a> · <a href="events.html#local-drinks">Open</a></figcaption></figure>
+    <figure class="qr-card"><img src="assets/qr/qr-breakfast.png" alt="QR code for Breakfast Menu" loading="lazy"><figcaption><a href="assets/qr/qr-breakfast.png" download>Download</a> · <a href="menu.html#breakfast">Open</a></figcaption></figure>
+    <figure class="qr-card"><img src="assets/qr/qr-cinnamon-rolls.png" alt="QR code for Cinnamon Rolls" loading="lazy"><figcaption><a href="assets/qr/qr-cinnamon-rolls.png" download>Download</a> · <a href="menu.html#cinnamon">Open</a></figcaption></figure>
+    <figure class="qr-card"><img src="assets/qr/qr-spring-rolls.png" alt="QR code for Spring Rolls" loading="lazy"><figcaption><a href="assets/qr/qr-spring-rolls.png" download>Download</a> · <a href="menu.html#spring">Open</a></figcaption></figure>
+    <figure class="qr-card"><img src="assets/qr/qr-meal-packs.png" alt="QR code for Breakfast & Lunch Packs" loading="lazy"><figcaption><a href="assets/qr/qr-meal-packs.png" download>Download</a> · <a href="menu.html#meals">Open</a></figcaption></figure>
+    <figure class="qr-card"><img src="assets/qr/qr-kitchen.png" alt="QR code for More from Our Kitchen" loading="lazy"><figcaption><a href="assets/qr/qr-kitchen.png" download>Download</a> · <a href="menu.html#more">Open</a></figcaption></figure>
+    <figure class="qr-card"><img src="assets/qr/qr-local-snacks.png" alt="QR code for Local Snacks" loading="lazy"><figcaption><a href="assets/qr/qr-local-snacks.png" download>Download</a> · <a href="events.html#local-snacks">Open</a></figcaption></figure>
+    <figure class="qr-card"><img src="assets/qr/qr-finger-foods.png" alt="QR code for Finger Foods" loading="lazy"><figcaption><a href="assets/qr/qr-finger-foods.png" download>Download</a> · <a href="events.html#finger-foods">Open</a></figcaption></figure>
+    <figure class="qr-card"><img src="assets/qr/qr-desserts.png" alt="QR code for Desserts" loading="lazy"><figcaption><a href="assets/qr/qr-desserts.png" download>Download</a> · <a href="events.html#desserts">Open</a></figcaption></figure>
+    <figure class="qr-card"><img src="assets/qr/qr-events.png" alt="QR code for Events & Catering" loading="lazy"><figcaption><a href="assets/qr/qr-events.png" download>Download</a> · <a href="events.html">Open</a></figcaption></figure>
+    <figure class="qr-card"><img src="assets/qr/qr-full-menu.png" alt="QR code for Full Menu" loading="lazy"><figcaption><a href="assets/qr/qr-full-menu.png" download>Download</a> · <a href="menu.html">Open</a></figcaption></figure>
+  </div>
+</main>
+</body>
+</html>
