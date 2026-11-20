@@ -40,7 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return `
       <aside class="panel summary">
         <h2>Order summary</h2>
-        ${order.it.map((i) => `<div class="sum-row small"><span>${i[3]} × ${esc(i[0])}<br><span class="muted">${esc(i[1])}${i[2] ? " · " + esc(i[2]) : ""}</span></span><span>${money(i[4])}</span></div>`).join("")}
+        ${order.it.map((i) => `<div class="sum-row small"><span>${esc(i[0])}${i[2] ? " · " + esc(i[2]) : ""}<br><span class="muted">${i[3]} × ${esc(i[1])} at ${money(i[4] / i[3])}</span></span><span>${money(i[4])}</span></div>`).join("")}
         <div class="sum-row sum-total"><span>Total</span><span>${money(order.tot)}</span></div>
         <div class="review-block" style="margin-top:14px">
           <dl>

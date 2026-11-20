@@ -199,6 +199,10 @@ function buildEvent(b) {
   };
 }
 
+const unitOf = (i) => (i[4] != null && i[3] ? i[4] / i[3] : null);
+const itemTitle = (i) => `${i[0]}${i[2] ? " (" + i[2] + ")" : ""}`;
+const itemCalc = (i) => unitOf(i) != null ? `${i[3]} × ${i[1]} at ${money(unitOf(i))} = ${money(i[4])}` : `${i[3]} × ${i[1]}`;
+
 /* ---------- WhatsApp text (built server-side; the Verify link is what counts) ---------- */
 function verifyLine(url) {
   return [``, `🔒 Verify this order (tap):`, url, ``, `If anything in this message differs from the verify page, the verify page is correct.`];
@@ -206,7 +210,7 @@ function verifyLine(url) {
 function orderText(o, url) {
   const m = method(o.pm);
   const L = [`*NEW ORDER: ${o.ref}*`, ``,
-    ...o.it.map((i) => `• ${i[3]} × ${i[0]} (${i[1]}${i[2] ? ", " + i[2] : ""}): ${money(i[4])}`),
+    ...o.it.map((i) => `• ${itemTitle(i)}: ${itemCalc(i)}`),
     `*Total: ${money(o.tot)}*`, ``, `*Customer*`, `Name: ${o.c.n}`, `Phone: ${o.c.p}`,
     `${o.c.f}${o.c.f === "Delivery" ? ": " + o.c.a : ""}`, `When: ${niceDate(o.c.d)}, ${o.c.tm}`];
   if (o.c.no) L.push(`Notes: ${o.c.no}`);
@@ -237,7 +241,7 @@ function verifyPage(x) {
     const m = method(x.pm);
     body = `<div class="ok">✔ GENUINE ORDER</div><p class="sub">Created by the website on ${esc(new Date(x.at).toLocaleString("en-GB", { timeZone: "UTC" }))} GMT</p>
       <h2>${esc(x.ref)}</h2><table>
-      ${x.it.map((i) => row(`${i[3]} × ${i[0]}`, `${esc(i[1])}${i[2] ? " · " + esc(i[2]) : ""}${i[4] != null ? ` · <b>${money(i[4])}</b>` : ""}`)).join("")}
+      ${x.it.map((i) => `<tr><td colspan="2"><div class="item">${esc(itemTitle(i))}</div><div class="calc">${unitOf(i) != null ? `${i[3]} × ${esc(i[1])} at ${money(unitOf(i))} = <b>${money(i[4])}</b>` : `${i[3]} × ${esc(i[1])}`}</div></td></tr>`).join("")}
       ${row("TOTAL", `<b class="big">${money(x.tot)}</b>`)}
       ${row("Name", esc(x.c.n))}${row("Phone", esc(x.c.p))}${row(x.c.f, x.c.f === "Delivery" ? (x.c.a ? esc(x.c.a) : "Address is in the WhatsApp message") : "Pick-up")}
       ${row("When", esc(niceDate(x.c.d) + ", " + x.c.tm))}${x.c.no ? row("Notes", esc(x.c.no)) : ""}
@@ -265,7 +269,7 @@ main{max-width:640px;margin:0 auto;padding:20px 16px 40px}h1{font-size:1rem;colo
 .ok,.bad{font-weight:800;font-size:1.4rem;padding:16px;border-radius:14px;text-align:center;color:#fff}.ok{background:#2f7d4a}.bad{background:#c0392b}
 .sub{color:#6f5547;font-size:.9rem;text-align:center}h2{margin:16px 0 8px;color:#3b1f14}
 table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden}th,td{text-align:left;padding:10px 12px;border-bottom:1px solid #e8d6bd;vertical-align:top}
-th{color:#6f5547;font-weight:600;width:40%}.big{font-size:1.2rem;color:#a8174f}.todo{margin-top:16px;background:#fff7e6;border:1px solid #f1d39a;border-radius:12px;padding:12px 14px}
+th{color:#6f5547;font-weight:600;width:38%}th,td{overflow-wrap:anywhere}.item{font-weight:700;color:#3b1f14}.calc{color:#6f5547;margin-top:2px}.calc b{color:#2a1710}.big{font-size:1.2rem;color:#a8174f}.todo{margin-top:16px;background:#fff7e6;border:1px solid #f1d39a;border-radius:12px;padding:12px 14px}
 </style></head><body><main><h1>Break-a-Fast · Order verification</h1>${body}</main></body></html>`;
 }
 

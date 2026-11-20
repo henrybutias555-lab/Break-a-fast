@@ -59,7 +59,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const items = Cart.detailed();
     const total = Cart.total();
     $("#summary").innerHTML = items.length
-      ? items.map((i) => `<div class="sum-row small"><span>${i.qty} × ${esc(i.product.name)}<br><span class="muted">${esc(i.option.label)}${i.flavour ? " · " + esc(i.flavour) : ""}</span></span><span>${money(i.line)}</span></div>`).join("") +
+      ? items.map((i) => `<div class="sum-row small"><span>${esc(i.product.name)}${i.flavour ? " · " + esc(i.flavour) : ""}<br><span class="muted">${i.qty} × ${esc(i.option.label)} at ${money(i.unit)}</span></span><span>${money(i.line)}</span></div>`).join("") +
         `<div class="sum-row sum-total"><span>Total to pay</span><span>${money(total)}</span></div>
          <p class="small muted" style="margin:6px 0 0">${isDelivery() ? "+ delivery fee, agreed on WhatsApp based on your location." : "Pick-up: no delivery fee."}</p>`
       : `<p class="muted">No items yet.</p>`;
@@ -131,7 +131,7 @@ document.addEventListener("DOMContentLoaded", () => {
     $("#review").innerHTML = `
       <div class="review-block">
         <h3>Items <button class="link-btn small" type="button" data-goto="1">Edit</button></h3>
-        ${items.map((i) => `<div class="sum-row"><span>${i.qty} × ${esc(i.product.name)} <span class="muted small">(${esc(i.option.label)}${i.flavour ? ", " + esc(i.flavour) : ""})</span></span><b>${money(i.line)}</b></div>`).join("")}
+        ${items.map((i) => `<div class="sum-row"><span>${esc(i.product.name)}${i.flavour ? " · " + esc(i.flavour) : ""}<br><span class="muted small">${i.qty} × ${esc(i.option.label)} at ${money(i.unit)}</span></span><b>${money(i.line)}</b></div>`).join("")}
         <div class="sum-row sum-total"><span>Total to pay</span><span>${money(Cart.total())}</span></div>
       </div>
       <div class="review-block">
