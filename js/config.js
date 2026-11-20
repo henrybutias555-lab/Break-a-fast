@@ -23,7 +23,7 @@ window.BAF_CONFIG = {
       name: "Telecel Cash",
       kind: "momo",
       number: "0201745770",
-      accountName: "Break-a-Fast Bistro and Bar",
+      accountName: "Marvelyn Boakye Yiadom",
       ussd: "*110#",
       color: "#e30613"
     },
