@@ -14,6 +14,8 @@ const crypto = require("crypto");
 const PORT = process.env.PORT || 8787;
 const SECRET = process.env.SIGNING_SECRET || "";
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "https://break-a-fast.onrender.com").split(",").map((s) => s.trim());
+const ALERT_URL = process.env.ALERT_URL || "";
+const ALERT_KEY = process.env.ALERT_KEY || "";
 if (SECRET.length < 32) { console.error("SIGNING_SECRET must be set (32+ chars)"); process.exit(1); }
 
 /* ---------- load the site's catalogue (single source of truth) ---------- */
@@ -273,6 +275,40 @@ th{color:#6f5547;font-weight:600;width:38%}th,td{overflow-wrap:anywhere}.item{fo
 </style></head><body><main><h1>Break-a-Fast · Order verification</h1>${body}</main></body></html>`;
 }
 
+/* ---------- owner email alerts (via the owner's Google Apps Script) ---------- */
+function alertHtml(title, color, x, url) {
+  const row = (k, v) => `<tr><td style="padding:6px 10px;color:#6f5547;border-bottom:1px solid #eee;vertical-align:top">${esc(k)}</td><td style="padding:6px 10px;border-bottom:1px solid #eee">${v}</td></tr>`;
+  let rows = "";
+  if (x.t === "o") {
+    rows = x.it.map((i) => row(itemTitle(i), esc(itemCalc(i)))).join("") + row("TOTAL", `<b style="font-size:18px;color:#a8174f">${money(x.tot)}</b>`) +
+      row("Name", esc(x.c.n)) + row("Phone", `<a href="tel:${esc(x.c.p)}">${esc(x.c.p)}</a> · <a href="https://wa.me/233${esc(x.c.p.slice(1))}">WhatsApp</a>`) +
+      row(x.c.f, x.c.f === "Delivery" ? esc(x.c.a) : "Pick-up") + row("When", esc(niceDate(x.c.d) + ", " + x.c.tm)) + (x.c.no ? row("Notes", esc(x.c.no)) : "") +
+      row("Payment method", esc(method(x.pm).name)) +
+      (x.py ? row("Transaction ID", `<b>${esc(x.py.txn)}</b>`) + row("Paid from", esc(x.py.from + (x.py.s ? " (" + x.py.s + ")" : ""))) : row("Payment", "Not reported yet"));
+  } else {
+    rows = row("Event", esc(x.ty)) + row("Date", esc(niceDate(x.d))) + row("Venue", esc(x.v || "To be shared")) + row("Package", esc((x.g ? x.g + " / " : "") + x.pk)) + row("Guests", esc(x.gu)) +
+      x.ad.map((a) => row("Extra", `${esc(a[0])} · ${money(a[1])}`)).join("") +
+      (x.tot ? row("Estimated total", `<b>${money(x.tot)}</b> (excl. transport)`) + row(`${C.eventDepositPercent}% token`, `<b>${money(x.dep)}</b>`) : row("Price", "Custom quote needed")) +
+      row("Name", esc(x.n)) + row("Phone", `<a href="tel:${esc(x.p)}">${esc(x.p)}</a> · <a href="https://wa.me/233${esc(x.p.slice(1))}">WhatsApp</a>`) + (x.m ? row("Message", esc(x.m)) : "") + row("Preferred payment", esc(method(x.pm).name));
+  }
+  return `<div style="font-family:Arial,sans-serif;max-width:560px">
+    <div style="background:${color};color:#fff;padding:14px 16px;border-radius:10px;font-size:18px;font-weight:bold">${esc(title)}</div>
+    <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:14px">${rows}</table>
+    <p style="margin-top:14px"><a href="${esc(url)}" style="background:#3b1f14;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Open verify page</a></p>
+    <p style="color:#888;font-size:12px">This alert comes from the Break-a-Fast order server, not from the customer, so the details above are exactly what was placed on the website.</p></div>`;
+}
+function sendAlert(kind, x, url) {
+  if (!ALERT_URL || !ALERT_KEY) return;
+  let subject, title, color;
+  if (kind === "order") { subject = `🟡 New order ${x.ref} · ${money(x.tot)} · awaiting payment`; title = `New order ${x.ref}: awaiting payment`; color = "#c27a12"; }
+  else if (kind === "paid") { subject = `🟢 Payment reported ${x.ref} · ${money(x.tot)} · ${method(x.pm).name} · TXN ${x.py.txn}`; title = `Customer reported payment for ${x.ref}. Check your ${method(x.pm).name} SMS.`; color = "#2f7d4a"; }
+  else { subject = `🎉 Event enquiry ${x.ref} · ${x.ty} · ${niceDate(x.d)}`; title = `New event enquiry ${x.ref}`; color = "#a8174f"; }
+  const ctrl = new AbortController(); setTimeout(() => ctrl.abort(), 20000);
+  fetch(ALERT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ key: ALERT_KEY, subject, html: alertHtml(title, color, x, url) }), redirect: "follow", signal: ctrl.signal })
+    .then((r) => r.text()).then((t) => { if (!/ok/.test(t)) console.error("alert not sent:", t.slice(0, 200)); })
+    .catch((e) => console.error("alert failed:", e.message));
+}
+
 /* ---------- tiny rate limiter ---------- */
 const hits = new Map();
 function limited(ip) {
@@ -312,7 +348,8 @@ http.createServer(async (req, res) => {
       if (limited(ip)) return send(res, 429, { error: "Too many requests. Please wait a few minutes." }, "application/json", cors);
       const b = await readJson(req);
       if (url.pathname === "/api/order") {
-        const o = buildOrder(b), token = seal(o), v = `${base}/v/${token}`;
+        const o = buildOrder(b), token = seal(o), v = `${base}/v/${shortCode(o)}`;
+        sendAlert("order", o, v);
         return send(res, 200, { order: o, token, verifyUrl: v, message: orderText(o, v) }, "application/json", cors);
       }
       if (url.pathname === "/api/pay") {
@@ -324,10 +361,12 @@ http.createServer(async (req, res) => {
         if (b.payment && method(b.payment)) o.pm = b.payment;
         o.py = { txn, from, s: str(b.sender, 80), at: new Date().toISOString() };
         const token = seal(o), v = `${base}/v/${shortCode(o)}`;
+        sendAlert("paid", o, v);
         return send(res, 200, { order: o, token, verifyUrl: v, message: orderText(o, v) }, "application/json", cors);
       }
       if (url.pathname === "/api/event") {
         const e = buildEvent(b), v = `${base}/v/${shortCode(e)}`;
+        sendAlert("event", e, v);
         return send(res, 200, { enquiry: e, verifyUrl: v, message: eventText(e, v) }, "application/json", cors);
       }
     }
