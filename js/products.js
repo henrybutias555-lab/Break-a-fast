@@ -87,7 +87,8 @@ window.BAF_PRODUCTS = [
     short: "Jollof, chicken drumsticks, spaghetti, salad, ice cream, fruit & drinks.",
     description:
       "Includes: jollof, chicken drumsticks, spaghetti, salad, ice cream, fruit, juice, fruit drink and water.",
-    image: "assets/img/meal-lunch1.jpg",
+    image: "assets/img/menu/jollof-chicken.jpg",
+    gallery: ["assets/img/menu/jollof-chicken.jpg", "assets/img/meal-lunch1.jpg"],
     options: [{ label: "1 pack", price: 400 }]
   },
   {

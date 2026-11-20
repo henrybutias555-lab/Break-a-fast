@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="css/styles.css">
 <script src="js/config.js" defer></script>
 <script src="js/products.js" defer></script>
+<script src="js/photos.js" defer></script>
 <script src="js/app.js" defer></script>
 </head>
 <body>
@@ -49,11 +50,11 @@
     <div class="grid grid-2">
       <div class="panel">
         <h3>Local</h3>
-        <div class="tags" id="bf-local"></div>
+        <div class="menu-tiles" id="bf-local"></div>
       </div>
       <div class="panel">
         <h3>Continental</h3>
-        <div class="tags" id="bf-cont"></div>
+        <div class="menu-tiles" id="bf-cont"></div>
       </div>
     </div>
     <p style="margin-top:16px"><a class="btn btn-wa" data-wa="Hello Break-a-Fast! I'd like to ask about your breakfast menu and prices." target="_blank" rel="noopener">Ask about breakfast on WhatsApp</a></p>
@@ -66,8 +67,12 @@
 <script>
   document.addEventListener("DOMContentLoaded", () => {
     const m = window.BAF_BREAKFAST_MENU, e = BAF.esc;
-    document.getElementById("bf-local").innerHTML = m.local.map((x) => `<span>${e(x)}</span>`).join("");
-    document.getElementById("bf-cont").innerHTML = m.continental.map((x) => `<span>${e(x)}</span>`).join("");
+    const PH = window.BAF_MENU_PHOTOS || {};
+    const tile = (x) => PH[x]
+      ? `<figure class="tile"><img src="${e(PH[x])}" alt="${e(x)}" loading="lazy" width="200" height="150"><figcaption>${e(x)}</figcaption></figure>`
+      : `<figure class="tile no-photo"><div class="ph" aria-hidden="true">${e(x.charAt(0))}</div><figcaption>${e(x)}</figcaption></figure>`;
+    document.getElementById("bf-local").innerHTML = m.local.map(tile).join("");
+    document.getElementById("bf-cont").innerHTML = m.continental.map(tile).join("");
   });
 </script>
 </body>

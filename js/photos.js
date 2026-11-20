@@ -13,6 +13,7 @@ window.BAF_MENU_PHOTOS = {
   "Pito": "assets/img/menu/pito.jpg",
   "Zomkom": "assets/img/menu/zomkom.jpg",
   "Lamugine": "assets/img/menu/lamugine.jpg",
-  "Brukina": "assets/img/menu/brukina.jpg"
+  "Brukina": "assets/img/menu/brukina.jpg",
+  "Sausages & Eggs": "assets/img/menu/sausages-eggs.jpg"
 };
 window.BAF_PHOTO_CREDITS = [];
