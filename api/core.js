@@ -300,7 +300,7 @@ function createApp(cfg) {
     else { subject = `🎉 Event enquiry ${x.ref} · ${x.ty} · ${niceDate(x.d)}`; title = `New event enquiry ${x.ref}`; color = "#a8174f"; }
     const ctrl = new AbortController(); setTimeout(() => ctrl.abort(), 20000);
     return fetch(ALERT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ key: ALERT_KEY, subject, html: alertHtml(title, color, x, url) }), redirect: "follow", signal: ctrl.signal })
-      .then((r) => r.text()).then((t) => { if (!/ok/.test(t)) console.error("alert not sent:", t.slice(0, 200)); })
+      .then((r) => r.text()).then((t) => { if (t.trim() !== "ok") console.error("alert not sent:", /<html/i.test(t) ? "Google returned a sign-in page: set the Apps Script web app access to Anyone" : t.slice(0, 200)); })
       .catch((e) => console.error("alert failed:", e.message));
   }
 
