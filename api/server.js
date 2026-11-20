@@ -37,6 +37,90 @@ function open(token) {
   if (good.length !== got.length || !crypto.timingSafeEqual(good, got)) return null;
   try { return JSON.parse(Buffer.from(d, "base64url").toString("utf8")); } catch (e) { return null; }
 }
+/* ---------- short verify codes ----------
+   The verify link carries the key facts packed into bytes, plus a 72-bit HMAC,
+   encoded in base62 (letters and digits only) so WhatsApp links the whole URL. */
+const B62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+const REF_A = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const EPOCH = Date.UTC(2026, 0, 1);
+const EVENT_TYPES = ["Birthday", "Wedding", "Corporate event", "Bridal shower", "Family gathering", "Church programme", "Other"];
+const FLAT_PKGS = GROUPS.flatMap((g) => g.packages.map((p) => ({ g, p })));
+function toB62(buf) { let n = BigInt("0x" + buf.toString("hex")), o = ""; while (n > 0n) { o = B62[Number(n % 62n)] + o; n /= 62n; } return o; }
+function fromB62(s) {
+  if (!/^[0-9A-Za-z]{10,400}$/.test(s)) return null;
+  let n = 0n; for (const ch of s) n = n * 62n + BigInt(B62.indexOf(ch));
+  let h = n.toString(16); if (h.length % 2) h = "0" + h; return Buffer.from(h, "hex");
+}
+class Wr { constructor() { this.b = []; }
+  u8(v) { this.b.push(v & 255); } u16(v) { this.u8(v >> 8); this.u8(v); } u24(v) { this.u8(v >> 16); this.u16(v & 0xffff); } u32(v) { this.u16(Math.floor(v / 65536)); this.u16(v % 65536); }
+  str(v, max) { const x = Buffer.from(String(v || ""), "utf8").subarray(0, max); this.u8(x.length); this.b.push(...x); }
+  phone(p) { const d = (p || "0000000000").padEnd(10, "0").slice(0, 10); for (let i = 0; i < 10; i += 2) this.u8((+d[i] << 4) | +d[i + 1]); } }
+class Rd { constructor(b) { this.b = b; this.i = 0; }
+  u8() { if (this.i >= this.b.length) throw new Error("short"); return this.b[this.i++]; } u16() { return (this.u8() << 8) | this.u8(); } u24() { return (this.u8() << 16) | this.u16(); } u32() { return this.u16() * 65536 + this.u16(); }
+  str() { const n = this.u8(); if (this.i + n > this.b.length) throw new Error("short"); const s = this.b.subarray(this.i, this.i + n).toString("utf8"); this.i += n; return s; }
+  phone() { let s = ""; for (let i = 0; i < 5; i++) { const x = this.u8(); s += (x >> 4) + "" + (x & 15); } return s; } }
+const refNum = (ref) => ref.split("-")[1].split("").reduce((n, ch) => n * 31 + REF_A.indexOf(ch), 0);
+const refStr = (n) => { let s = ""; for (let i = 0; i < 6; i++) { s = REF_A[n % 31] + s; n = Math.floor(n / 31); } return s; };
+const days = (iso) => Math.round((Date.parse(iso + "T00:00:00Z") - EPOCH) / 864e5);
+const isoDay = (d) => new Date(EPOCH + d * 864e5).toISOString().slice(0, 10);
+const pmIdx = (id) => Math.max(0, METHODS.findIndex((m) => m.id === id));
+function shortCode(x) {
+  const w = new Wr();
+  const isE = x.t === "e", hasPay = !!x.py, phone = isE ? x.p : x.c.p;
+  const fromIsPhone = hasPay && x.py.from.replace(/\D/g, "") === phone;
+  w.u8(1); // version
+  w.u32(refNum(x.ref));
+  w.u8((isE ? 1 : 0) | (pmIdx(x.pm) << 1) | ((!isE && x.c.f === "Pick-up" ? 1 : 0) << 3) | ((isE ? 0 : Math.max(0, TIMES.indexOf(x.c.tm))) << 4) | ((hasPay ? 1 : 0) << 6) | ((fromIsPhone ? 1 : 0) << 7));
+  w.u24(Math.round((Date.parse(x.at) - EPOCH) / 60000));
+  w.u16(days(isE ? x.d : x.c.d));
+  w.phone(phone);
+  w.u32(Math.round(x.tot * 100));
+  if (isE) {
+    const fi = FLAT_PKGS.findIndex((f) => f.p.name === x.pk && f.g.name === x.g);
+    w.u8(fi < 0 ? 255 : fi);
+    w.u16(parseInt(x.gu, 10) || 0);
+    w.u8(fi < 0 ? 0 : FLAT_PKGS[fi].g.addons.reduce((m, a, i) => (x.ad.some((d) => d[0] === a.name) ? m | (1 << i) : m), 0));
+    w.u8(Math.max(0, EVENT_TYPES.indexOf(x.ty) < 0 ? EVENT_TYPES.length - 1 : EVENT_TYPES.indexOf(x.ty)));
+    w.str(x.n, 30); w.str(x.v, 30);
+  } else {
+    w.u8(x.it.length);
+    for (const it of x.it) {
+      const pi = PRODUCTS.findIndex((p) => p.name === it[0]), p = PRODUCTS[pi];
+      w.u8(pi); w.u8((p.options.findIndex((o) => o.label === it[1]) << 4) | (it[2] ? p.flavours.indexOf(it[2]) + 1 : 0)); w.u8(it[3]);
+    }
+    w.str(x.c.n, 30);
+    if (hasPay) { w.str(x.py.txn, 30); if (!fromIsPhone) w.str(x.py.from, 30); }
+  }
+  const body = Buffer.from(w.b);
+  const mac = crypto.createHmac("sha256", SECRET).update(body).digest().subarray(0, 9);
+  return toB62(Buffer.concat([body, mac]));
+}
+function openShort(code) {
+  const buf = fromB62(code);
+  if (!buf || buf.length < 20 || buf[0] !== 1) return null;
+  const body = buf.subarray(0, buf.length - 9), mac = buf.subarray(buf.length - 9);
+  const good = crypto.createHmac("sha256", SECRET).update(body).digest().subarray(0, 9);
+  if (!crypto.timingSafeEqual(good, mac)) return null;
+  try {
+    const r = new Rd(body); r.u8();
+    const refN = r.u32(), fl = r.u8(), at = new Date(EPOCH + r.u24() * 60000).toISOString(), d = isoDay(r.u16()), phone = r.phone(), tot = r.u32() / 100;
+    const isE = fl & 1, pm = (METHODS[(fl >> 1) & 3] || METHODS[0]).id;
+    if (isE) {
+      const fi = r.u8(), f = FLAT_PKGS[fi], gu = String(r.u16()), mask = r.u8(), ty = EVENT_TYPES[r.u8()] || "Other", n = r.str(), v = r.str();
+      const ad = f ? f.g.addons.filter((a, i) => mask & (1 << i)).map((a) => [a.name, a.price]) : [];
+      return { t: "e", ref: "EVT-" + refStr(refN), at, g: f ? f.g.name : "", pk: f ? f.p.name : "Custom / bulk order", gu: f ? gu : "", ad, tot, dep: f ? Math.round(tot * C.eventDepositPercent) / 100 : 0, ty, n, p: phone, d, v, pm };
+    }
+    const it = [], k = r.u8();
+    for (let i = 0; i < k; i++) {
+      const p = PRODUCTS[r.u8()], of = r.u8(), q = r.u8(), o = p && p.options[of >> 4], fv = p && (of & 15) ? (p.flavours || [])[(of & 15) - 1] : "";
+      it.push([p ? p.name : "Item no longer on menu", o ? o.label : "", fv || "", q, o ? o.price * q : null]);
+    }
+    const n = r.str(), o = { t: "o", ref: C.orderPrefix + "-" + refStr(refN), at, it, tot, c: { n, p: phone, f: fl & 8 ? "Pick-up" : "Delivery", d, tm: TIMES[(fl >> 4) & 3] }, pm };
+    if (fl & 64) { const txn = r.str(); o.py = { txn, from: fl & 128 ? phone : r.str() }; }
+    return o;
+  } catch (e) { return null; }
+}
+
 function makeRef(prefix) {
   const A = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
   return prefix + "-" + Array.from(crypto.randomBytes(6), (n) => A[n % A.length]).join("");
@@ -117,7 +201,7 @@ function buildEvent(b) {
 
 /* ---------- WhatsApp text (built server-side; the Verify link is what counts) ---------- */
 function verifyLine(url) {
-  return [``, `🔒 *VERIFY THIS MESSAGE:*`, url, `_If anything in this message differs from the verify page, the verify page is correct._`];
+  return [``, `🔒 Verify this order (tap):`, url, ``, `If anything in this message differs from the verify page, the verify page is correct.`];
 }
 function orderText(o, url) {
   const m = method(o.pm);
@@ -153,9 +237,9 @@ function verifyPage(x) {
     const m = method(x.pm);
     body = `<div class="ok">✔ GENUINE ORDER</div><p class="sub">Created by the website on ${esc(new Date(x.at).toLocaleString("en-GB", { timeZone: "UTC" }))} GMT</p>
       <h2>${esc(x.ref)}</h2><table>
-      ${x.it.map((i) => row(`${i[3]} × ${i[0]}`, `${esc(i[1])}${i[2] ? " · " + esc(i[2]) : ""} · <b>${money(i[4])}</b>`)).join("")}
+      ${x.it.map((i) => row(`${i[3]} × ${i[0]}`, `${esc(i[1])}${i[2] ? " · " + esc(i[2]) : ""}${i[4] != null ? ` · <b>${money(i[4])}</b>` : ""}`)).join("")}
       ${row("TOTAL", `<b class="big">${money(x.tot)}</b>`)}
-      ${row("Name", esc(x.c.n))}${row("Phone", esc(x.c.p))}${row(x.c.f, x.c.f === "Delivery" ? esc(x.c.a) : "Pick-up")}
+      ${row("Name", esc(x.c.n))}${row("Phone", esc(x.c.p))}${row(x.c.f, x.c.f === "Delivery" ? (x.c.a ? esc(x.c.a) : "Address is in the WhatsApp message") : "Pick-up")}
       ${row("When", esc(niceDate(x.c.d) + ", " + x.c.tm))}${x.c.no ? row("Notes", esc(x.c.no)) : ""}
       ${row("Payment method", esc(m ? m.name : x.pm))}
       ${x.py ? row("Customer's Transaction ID", esc(x.py.txn)) + row("Paid from", esc(x.py.from + (x.py.s ? " (" + x.py.s + ")" : ""))) : row("Payment", "Not reported yet")}
@@ -218,7 +302,7 @@ http.createServer(async (req, res) => {
   try {
     if (req.method === "OPTIONS") return send(res, 204, "", "text/plain", cors);
     if (req.method === "GET" && url.pathname === "/health") return send(res, 200, { ok: true }, "application/json", cors);
-    if (req.method === "GET" && url.pathname.startsWith("/v/")) return send(res, 200, verifyPage(open(decodeURIComponent(url.pathname.slice(3)))), "text/html");
+    if (req.method === "GET" && url.pathname.startsWith("/v/")) { const t = decodeURIComponent(url.pathname.slice(3)).replace(/[^0-9A-Za-z._-]/g, ""); return send(res, 200, verifyPage(t.includes(".") ? open(t) : openShort(t)), "text/html"); }
     if (req.method === "POST" && url.pathname.startsWith("/api/")) {
       const ip = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress).split(",")[0].trim();
       if (limited(ip)) return send(res, 429, { error: "Too many requests. Please wait a few minutes." }, "application/json", cors);
@@ -235,11 +319,11 @@ http.createServer(async (req, res) => {
         need(from.replace(/\D/g, "").length >= 6, "Please enter the number or account you paid from.");
         if (b.payment && method(b.payment)) o.pm = b.payment;
         o.py = { txn, from, s: str(b.sender, 80), at: new Date().toISOString() };
-        const token = seal(o), v = `${base}/v/${token}`;
+        const token = seal(o), v = `${base}/v/${shortCode(o)}`;
         return send(res, 200, { order: o, token, verifyUrl: v, message: orderText(o, v) }, "application/json", cors);
       }
       if (url.pathname === "/api/event") {
-        const e = buildEvent(b), token = seal(e), v = `${base}/v/${token}`;
+        const e = buildEvent(b), v = `${base}/v/${shortCode(e)}`;
         return send(res, 200, { enquiry: e, verifyUrl: v, message: eventText(e, v) }, "application/json", cors);
       }
     }
