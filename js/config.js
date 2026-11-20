@@ -41,7 +41,7 @@ window.BAF_CONFIG = {
       id: "bank",
       name: "Bank transfer",
       kind: "bank",
-      bank: "First National Bank",
+      bank: "FirstBank Ghana",
       number: "0133070116336",
       accountName: "Marvelyn Boakye Yiadom",
       color: "#0b4f8a"
