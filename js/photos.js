@@ -11,6 +11,7 @@ window.BAF_MENU_PHOTOS = {
   "Palm Wine": "assets/img/menu/palm-wine.jpg",
   "Asana": "assets/img/menu/asana.jpg",
   "Pito": "assets/img/menu/pito.jpg",
-  "Zomkom": "assets/img/menu/zomkom.jpg"
+  "Zomkom": "assets/img/menu/zomkom.jpg",
+  "Lamugine": "assets/img/menu/lamugine.jpg"
 };
 window.BAF_PHOTO_CREDITS = [];
