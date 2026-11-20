@@ -18,11 +18,11 @@ window.BAF_PRODUCTS = [
     short: "Handcrafted rolls finished with Strawberry, Oreo, Biscoff or Blueberry toppings.",
     description:
       "Our best-loved rolls, baked fresh and loaded with your favourite topping: juicy strawberry glaze, crushed Oreo and cream, Biscoff spread with cookie crumb, or rich blueberry compote. Perfect for sharing, gifting and celebrations.",
-    image: "assets/img/roll-biscoff.jpg",
+    image: "assets/img/menu/roll-biscoff-new.jpg",
     gallery: [
       "assets/img/roll-strawberry.jpg",
       "assets/img/roll-oreo.jpg",
-      "assets/img/roll-biscoff.jpg",
+      "assets/img/menu/roll-biscoff-new.jpg",
       "assets/img/roll-blueberry.jpg"
     ],
     flavours: ["Strawberry", "Oreo", "Biscoff", "Blueberry"],
@@ -40,7 +40,7 @@ window.BAF_PRODUCTS = [
     short: "The timeless favourite. Warm, soft and perfectly cinnamon-y, with smooth icing.",
     description:
       "Traditional cinnamon rolls with a buttery swirl and smooth vanilla icing. Simple, comforting and great with tea or coffee.",
-    image: "assets/img/roll-classic.jpg",
+    image: "assets/img/menu/roll-classic-new.jpg",
     options: [
       { label: "6 pieces", price: 150 },
       { label: "12 pieces", price: 250 }
@@ -64,7 +64,7 @@ window.BAF_PRODUCTS = [
     short: "Vegetables with minced meat or chicken. Your choice.",
     description:
       "Our hearty spring rolls with vegetables and your choice of minced meat or chicken. Frozen and ready to fry or bake.",
-    image: "assets/img/menu/spring-rolls.jpg",
+    image: "assets/img/menu/spring-roll-meat.jpg",
     flavours: ["Minced Meat", "Chicken"],
     flavourLabel: "Filling",
     options: [{ label: "10 pieces", price: 50 }],
