@@ -2,7 +2,8 @@
 import json, urllib.request, uuid
 
 ACCOUNT = "86eb082f432b1091750cbc849f00eaf3"
-SCRIPT = "break-a-fast-api"
+import sys
+SCRIPT = sys.argv[1] if len(sys.argv) > 1 else "orders"
 RENDER_SVC = "srv-dc01a867bikc7394mhfg"
 
 def req(url, method="GET", data=None, headers=None):

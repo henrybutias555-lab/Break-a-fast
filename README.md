@@ -41,6 +41,6 @@ The live order server runs on Cloudflare Workers (`break-a-fast-api.henrybutias5
 Menu and price data is built into the Worker. **After changing `js/products.js`, `js/events-data.js` or `js/config.js`, redeploy the Worker:**
 ```
 node api/build-worker.js
-python3 api/deploy_cloudflare.py   # needs a Cloudflare token (Workers Scripts: Edit) and a Render API key
+python3 api/deploy_cloudflare.py orders   # needs a Cloudflare token (Workers Scripts: Edit) and a Render API key
 ```
 The deploy script copies `SIGNING_SECRET` and `ALERT_KEY`/`ALERT_URL` from the Render service, so links work on both.
