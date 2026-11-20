@@ -21,3 +21,6 @@ Event bookings: enquiry, then confirmation and invoice, then a 40% token by Tele
 ## Known limits (v1)
 - Orders are sent to the owner via WhatsApp. There is no server or database yet. A payment gateway (Paystack/Hubtel) can be added later.
 - Delivery fees are agreed on WhatsApp.
+
+## Deploying on Render
+`render.yaml` is a Render Blueprint. In Render: **New → Blueprint**, connect this GitHub repo and pick the branch. The site will be at `https://break-a-fast.onrender.com` (if that name is free). To use your own domain, go to **Settings → Custom Domains** and add the DNS records Render shows at your domain registrar.

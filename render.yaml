@@ -1,0 +1,34 @@
+# Render Blueprint: static site for Break-a-Fast Bistro and Bar
+services:
+  - type: web
+    name: break-a-fast
+    runtime: static
+    buildCommand: ""
+    staticPublishPath: .
+    pullRequestPreviewsEnabled: false
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=604800
+    routes:
+      - type: rewrite
+        source: /menu
+        destination: /menu.html
+      - type: rewrite
+        source: /events
+        destination: /events.html
+      - type: rewrite
+        source: /about
+        destination: /about.html
+      - type: rewrite
+        source: /contact
+        destination: /contact.html
+      - type: rewrite
+        source: /checkout
+        destination: /checkout.html
