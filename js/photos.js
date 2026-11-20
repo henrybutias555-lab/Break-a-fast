@@ -20,6 +20,15 @@ window.BAF_MENU_PHOTOS = {
   "Beetroot and Apple Juice": "assets/img/menu/beetroot-and-apple-juice.jpg",
   "Pineapple Juice": "assets/img/menu/pineapple-juice.jpg",
   "Mango Juice": "assets/img/menu/mango-juice.jpg",
-  "Pineapple and Coconut Juice": "assets/img/menu/pineapple-and-coconut-juice.jpg"
+  "Pineapple and Coconut Juice": "assets/img/menu/pineapple-and-coconut-juice.jpg",
+  "Plantain Chips": "assets/img/menu/plantain-chips.jpg",
+  "Baked Chips": "assets/img/menu/baked-chips.jpg",
+  "Nkate Cake": "assets/img/menu/nkate-cake.jpg",
+  "Condensed Milk Toffee": "assets/img/menu/condensed-milk-toffee.jpg",
+  "Tigernut": "assets/img/menu/tigernut.jpg",
+  "Egg with Pepper (Kosua ne Mako)": "assets/img/menu/egg-with-pepper-kosua-ne-mako.jpg",
+  "Coated Groundnut": "assets/img/menu/coated-groundnut.jpg",
+  "Poloo": "assets/img/menu/poloo.jpg",
+  "Kulikuli": "assets/img/menu/kulikuli.jpg"
 };
 window.BAF_PHOTO_CREDITS = [];
