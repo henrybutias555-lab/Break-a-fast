@@ -26,7 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let pm = METHODS.find((m) => m.id === order.pm) || METHODS[0];
   const niceDate = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
   const amount = String(order.tot);
-  fetch(C.apiBase + "/health").catch(() => {});
+  BAF.wake();
 
   function renderHead() {
     const st = order.status === "Awaiting Confirmation" ? "awaiting" : "pending";
@@ -155,7 +155,7 @@ document.addEventListener("DOMContentLoaded", () => {
       send.disabled = true; send.textContent = "Saving…";
       $("#pay-err")?.remove();
       try {
-        const r = await fetch(C.apiBase + "/api/pay", {
+        const r = await BAF.api("/api/pay", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token: order.token, payment: pm.id, txn, from, sender: f.sender.value.trim() })
         });

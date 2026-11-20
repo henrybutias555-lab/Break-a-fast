@@ -285,8 +285,31 @@
     if (btn) { const o = btn.textContent; btn.textContent = "Copied ✓"; setTimeout(() => (btn.textContent = o), 1600); }
   }
 
+  /* ---------- order server calls (main server, then backup) ---------- */
+  // Tries the main server; if it can't be reached at all (network/DNS error or timeout),
+  // retries the same request on the backup. Server answers like 400 are returned as-is.
+  async function api(path, options = {}, timeoutMs = 90000) {
+    const bases = [C.apiBase, C.apiFallback].filter(Boolean);
+    let lastErr;
+    for (let i = 0; i < bases.length; i++) {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), i === 0 && bases.length > 1 ? 12000 : timeoutMs);
+      try {
+        const r = await fetch(bases[i] + path, { ...options, signal: ctrl.signal });
+        clearTimeout(t);
+        if (r.status >= 500 && i < bases.length - 1) { lastErr = new Error("Server error"); continue; }
+        return r;
+      } catch (e) {
+        clearTimeout(t);
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error("Could not reach the order server.");
+  }
+  const wake = () => [C.apiBase, C.apiFallback].filter(Boolean).forEach((b) => fetch(b + "/health").catch(() => {}));
+
   /* ---------- public API ---------- */
-  window.BAF = { $, $$, esc, money, store, waLink, telLink, Cart, productCard, productMedia, bindProductOpeners, openProduct, toast, copyText, config: C, products: P };
+  window.BAF = { $, $$, esc, money, store, waLink, telLink, Cart, productCard, productMedia, bindProductOpeners, openProduct, toast, copyText, api, wake, config: C, products: P };
 
   document.addEventListener("DOMContentLoaded", () => {
     renderLayout();

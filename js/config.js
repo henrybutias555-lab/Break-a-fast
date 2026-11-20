@@ -52,6 +52,10 @@ window.BAF_CONFIG = {
   apiBase: (typeof location !== "undefined" && /^(localhost|127\.0\.0\.1)$/.test(location.hostname))
     ? "http://localhost:8787"
     : "https://orders.break-a-fast.workers.dev",
+  // Backup order server, used automatically if the main one can't be reached
+  apiFallback: (typeof location !== "undefined" && /^(localhost|127\.0\.0\.1)$/.test(location.hostname))
+    ? ""
+    : "https://break-a-fast-api.onrender.com",
 
   // Events & catering bookings
   eventDepositPercent: 40,

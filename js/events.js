@@ -5,7 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const DEP = C.eventDepositPercent / 100;
   const f = $("#event-form");
   f.payment.innerHTML = C.paymentMethods.map((m) => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join("");
-  fetch(C.apiBase + "/health").catch(() => {});
+  BAF.wake();
   let group = G[0];
 
   const allPkgs = G.flatMap((g) => g.packages.map((p) => ({ ...p, group: g })));
@@ -163,7 +163,7 @@ document.addEventListener("DOMContentLoaded", () => {
     btn.disabled = true; btn.textContent = "Preparing your enquiry…";
     $("#ev-result")?.remove();
     try {
-      const r = await fetch(C.apiBase + "/api/event", {
+      const r = await BAF.api("/api/event", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           pkg: f.pkg.value, guests: f.guests.value, addons: chosenAddons().map((a) => a.id), picks: chosenPicks(),

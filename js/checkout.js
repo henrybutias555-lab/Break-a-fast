@@ -6,7 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const methodName = (id) => (METHODS.find((m) => m.id === id) || {}).name || id;
   $("#pay-methods").innerHTML = METHODS.map((m, i) => `<label><input type="radio" name="payment" value="${esc(m.id)}"${i === 0 ? " checked" : ""}> <span>${esc(m.name)}<small>${m.kind === "bank" ? esc(m.bank) : "Mobile money"}</small></span></label>`).join("");
   // Wake the order server early (free hosting sleeps when idle)
-  fetch(C.apiBase + "/health").catch(() => {});
+  BAF.wake();
   const DRAFT_KEY = "baf_details_v1";
 
   /* ---------- steps ---------- */
@@ -161,12 +161,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const slow = setTimeout(() => (place.textContent = "Still working… (up to a minute)"), 6000);
     $("#place-err")?.remove();
     try {
-      const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 90000);
-      const r = await fetch(C.apiBase + "/api/order", {
-        method: "POST", headers: { "Content-Type": "application/json" }, signal: ctrl.signal,
+      const r = await BAF.api("/api/order", {
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ items: Cart.items().map(({ productId, optionIndex, flavour, qty }) => ({ productId, optionIndex, flavour, qty })), customer: details(), payment: details().payment })
       });
-      clearTimeout(t);
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || "Could not place your order.");
       const orders = store.get("baf_orders_v1", {});
