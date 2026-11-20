@@ -183,8 +183,11 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   /* ---------- event menu (exact names from the menu document) ---------- */
+  const PH = window.BAF_MENU_PHOTOS || {};
   $("#event-menu").innerHTML = Object.entries(MENU)
-    .map(([k, v]) => `<div class="panel"><h3>${esc(k)}</h3><div class="tags">${v.map((x) => `<span>${esc(x)}</span>`).join("")}</div></div>`).join("");
+    .map(([k, v]) => `<div class="panel"><h3>${esc(k)}</h3><div class="menu-tiles">${v.map((x) => PH[x]
+      ? `<figure class="tile"><img src="${esc(PH[x])}" alt="${esc(x)}" loading="lazy" width="200" height="150"><figcaption>${esc(x)}</figcaption></figure>`
+      : `<figure class="tile no-photo"><div class="ph" aria-hidden="true">${esc(x.charAt(0))}</div><figcaption>${esc(x)}</figcaption></figure>`).join("")}</div></div>`).join("");
   $("#dessert-note").textContent = window.BAF_DESSERT_NOTE || "";
 
   showGroup(new URLSearchParams(location.search).get("group") || G[0].id);

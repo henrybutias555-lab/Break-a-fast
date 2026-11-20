@@ -339,3 +339,14 @@ body.no-float .wa-float { display: none; }
 .about-img { border-radius: 22px; box-shadow: var(--shadow); }
 .mv { display: grid; gap: 14px; }
 @media (min-width: 760px) { .mv { grid-template-columns: 1fr 1fr; } }
+
+/* Event menu photo tiles */
+.menu-tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+@media (min-width: 560px) { .menu-tiles { grid-template-columns: repeat(3, 1fr); } }
+.tile { margin: 0; background: var(--cream); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.tile img, .tile .ph { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; }
+.tile .ph { display: grid; place-items: center; background: linear-gradient(135deg, #fbe3c0, #f2c48a); font: 2rem var(--font-head); color: var(--brown-2); }
+.tile figcaption { padding: 6px 8px; font-weight: 700; font-size: .85rem; color: var(--brown); line-height: 1.25; }
+.credits-list { list-style: none; padding: 0; display: grid; gap: 10px; }
+.credits-list li { display: grid; grid-template-columns: 64px 1fr; gap: 12px; align-items: center; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 8px; font-size: .9rem; }
+.credits-list img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; }

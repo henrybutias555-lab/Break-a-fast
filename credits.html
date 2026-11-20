@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Photo Credits | Break-a-Fast Bistro and Bar</title>
+<meta name="description" content="Credits and licences for photos used on the Break-a-Fast website.">
+<meta name="theme-color" content="#3b1f14">
+<link rel="icon" href="assets/img/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Nunito:wght@400;700;800&family=Pacifico&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<script src="js/config.js" defer></script>
+<script src="js/products.js" defer></script>
+<script src="js/photos.js" defer></script>
+<script src="js/app.js" defer></script>
+</head>
+<body>
+<main id="main" class="wrap">
+  <div class="page-head">
+    <h1>Photo credits</h1>
+    <p>Our cinnamon roll and meal-pack photos are Break-a-Fast's own. Some menu photos are used under free licences (Creative Commons or public domain). Thank you to these photographers. These photos show the type of item; actual presentation may differ.</p>
+  </div>
+  <ul class="credits-list" id="credits"></ul>
+</main>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const e = BAF.esc;
+    document.getElementById("credits").innerHTML = (window.BAF_PHOTO_CREDITS || []).map((c) =>
+      `<li><img src="${e(c.file)}" alt="" loading="lazy"><div><b>${e(c.item)}</b><br>${e(c.title || "Photo")} by ${e(c.author || "unknown")}<br>
+       <a href="${e(c.page)}" target="_blank" rel="noopener">Source</a> · ${c.licenseUrl ? `<a href="${e(c.licenseUrl)}" target="_blank" rel="noopener">${e(c.license)}</a>` : e(c.license)}${c.modified ? " · cropped and resized" : ""}</div></li>`).join("");
+  });
+</script>
+</body>
+</html>

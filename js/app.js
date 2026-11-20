@@ -137,7 +137,7 @@
             </ul>
           </div>
         </div>
-        <div class="copy-line">© ${new Date().getFullYear()} ${esc(C.businessName)}. Good rolls, good mood.</div>
+        <div class="copy-line">© ${new Date().getFullYear()} ${esc(C.businessName)}. Good rolls, good mood. · <a href="credits.html">Photo credits</a></div>
       </div>`;
     document.body.appendChild(footer);
 
