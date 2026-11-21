@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terms &amp; Conditions | Break-a-Fast Bistro and Bar</title>
+<meta name="description" content="Terms and conditions for Break-a-Fast orders (3 days' notice) and events and catering bookings (2 weeks' notice).">
+<meta name="theme-color" content="#3b1f14">
+<link rel="icon" href="assets/img/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Nunito:wght@400;700;800&family=Pacifico&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css?v=d68cdf04">
+<script src="js/config.js?v=4615361c" defer></script>
+<script src="js/products.js?v=8b8feca8" defer></script>
+<script src="js/app.js?v=b53c383e" defer></script>
+<style>
+  .terms { max-width: 760px; }
+  .terms section { scroll-margin-top: 84px; margin-bottom: 28px; }
+  .terms ol { padding-left: 22px; display: grid; gap: 10px; margin: 0; }
+  .terms li b { color: var(--brown); }
+  .terms .toc { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 22px; }
+</style>
+</head>
+<body>
+<main id="main" class="wrap terms">
+  <div class="page-head">
+    <h1>Terms &amp; Conditions</h1>
+    <p>Please read these before placing an order or booking an event. By ordering on this website or sending an event enquiry, you agree to them.</p>
+  </div>
+  <nav class="toc cat-tabs" aria-label="Sections">
+    <a href="#orders">Normal orders</a>
+    <a href="#events">Events &amp; catering</a>
+    <a href="#payment">Payment</a>
+    <a href="#contact">Questions</a>
+  </nav>
+
+  <section id="orders" class="panel">
+    <h2>1. Normal orders</h2>
+    <p class="muted">Cinnamon rolls, spring rolls, breakfast and lunch packs, and other menu items.</p>
+    <ol>
+      <li><b>3 days' notice.</b> Orders must be placed at least <b>3 days</b> before the delivery or pick-up date. For example, an order placed on Saturday can be delivered from Tuesday. Earlier dates cannot be chosen on the website.</li>
+      <li><b>Urgent orders.</b> If you need something sooner, message us on WhatsApp. Urgent orders depend on availability and are not guaranteed.</li>
+      <li><b>Choosing your date.</b> You choose your delivery or pick-up date at checkout.</li>
+      <li><b>Choosing your time.</b> After you confirm your payment, you choose a <b>1-hour time window</b> between <span data-hours></span> on your chosen date. The window is the time we aim to deliver or have your order ready; we confirm the final timing with you on WhatsApp.</li>
+      <li><b>Payment first.</b> Orders are paid in full in advance (see <a href="#payment">Payment</a>). We start preparing your order only after we have confirmed that your payment has been received. Time windows are not held for unpaid orders.</li>
+      <li><b>Prices.</b> Prices are in Ghana cedis (GH₵) as shown on the website when you order.</li>
+      <li><b>Delivery and pick-up.</b> Delivery fees are not included in the order total. They depend on your location and are agreed with you on WhatsApp. Pick-up has no delivery fee; we share the pick-up point on WhatsApp.</li>
+      <li><b>Changes.</b> To change your date, time or order, message us on WhatsApp with your order reference as early as possible. Changes depend on availability.</li>
+    </ol>
+  </section>
+
+  <section id="events" class="panel">
+    <h2>2. Events &amp; catering</h2>
+    <p class="muted">Party and event packages, breakfast event packages and bulk catering.</p>
+    <ol>
+      <li><b>2 weeks' notice.</b> Events must be booked at least <b>2 weeks (14 days)</b> before the event date. Earlier dates cannot be chosen on the website.</li>
+      <li><b>Enquiry first.</b> Send an enquiry through the website. We confirm availability for your date and send you an invoice before any payment is made.</li>
+      <li><b>Booking deposit.</b> A booking becomes valid when at least <b>40%</b> of the selected package has been paid.</li>
+      <li><b>Full payment.</b> Payment in full must be completed at least <b>14 working days</b> before the event. For bookings made closer to the event than that, full payment is due when the booking is confirmed.</li>
+      <li><b>Price changes.</b> Package prices may change, typically after 2 to 3 months, because of changes in product prices. To avoid any increase, full payment upfront is recommended.</li>
+      <li><b>Transport.</b> Transportation cost is not included in any package. It is quoted once you share the event location.</li>
+      <li><b>Set-up.</b> Breakfast event packages include a food set-up station. Optional extras (such as truss, lighting, floral works, backdrops and drink bar stands) are charged separately as listed.</li>
+      <li><b>Cancellation.</b> No refund is issued on cancellation, except where the cancellation arises from a force majeure event, in which case <b>40% of the amount paid</b> is refunded.</li>
+    </ol>
+  </section>
+
+  <section id="payment" class="panel">
+    <h2>3. Payment</h2>
+    <ol>
+      <li><b>Methods.</b> We accept Telecel Cash, MTN MoMo and bank transfer. The account details are shown on the payment page after you place your order, and all accounts are in the name <b>Marvelyn Boakye Yiadom</b>.</li>
+      <li><b>Use your reference.</b> Always use your order or booking reference (for example <code class="k">BAF-…</code> or <code class="k">EVT-…</code>) when paying, so we can match your payment.</li>
+      <li><b>Confirmation.</b> An order or booking is confirmed only after we have checked that the payment has arrived in our account.</li>
+      <li><b>Stay safe.</b> We will never ask for your PIN. Only pay to the details shown on our website.</li>
+    </ol>
+  </section>
+
+  <section id="contact" class="panel">
+    <h2>4. Questions</h2>
+    <p style="margin:0">For any question about an order or booking, call or WhatsApp <a href="tel:0201745770">0201745770</a> or <a href="tel:0534068801">0534068801</a>, quoting your reference.</p>
+  </section>
+</main>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const o = (BAF.config.orderHours || { open: 8, close: 19 });
+    const hr = (h) => (h === 12 ? "12pm" : h > 12 ? h - 12 + "pm" : h + "am");
+    document.querySelectorAll("[data-hours]").forEach((el) => (el.textContent = `${hr(o.open)} and ${hr(o.close)}`));
+  });
+</script>
+</body>
+</html>

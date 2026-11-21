@@ -64,6 +64,7 @@ window.BAF_CONFIG = {
   orderHours: { open: 8, close: 19, minNoticeDays: 3, sameDayLeadHours: 4, sameDayMaxSlots: 3 },
 
   // Events & catering bookings
+  eventNoticeDays: 14,      // event date must be at least this many days ahead (2 weeks)
   eventDepositPercent: 40,
 
   // Prefix for order reference numbers, e.g. BAF-24K7Q

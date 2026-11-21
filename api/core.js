@@ -192,6 +192,8 @@ function createApp(cfg) {
     need(name.length >= 2, "Please enter your name.");
     need(phone, "Please enter a valid Ghana phone number.");
     need(validDate(b.date), "Please choose a valid event date.");
+    const evNotice = C.eventNoticeDays || 0;
+    need(b.date >= new Date(Date.now() + evNotice * 864e5).toISOString().slice(0, 10), `Events must be booked at least ${evNotice} days (2 weeks) before the event date.`);
     need(method(b.payment), "Please choose a payment method.");
     const tot = base + addons.reduce((s, a) => s + a[1], 0);
     const MENU = W.BAF_EVENT_MENU, SRC = W.BAF_PICK_SOURCES;

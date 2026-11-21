@@ -11,12 +11,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Nunito:wght@400;700;800&family=Pacifico&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css?v=d68cdf04">
-<script src="js/config.js?v=c1ebfd7b" defer></script>
+<script src="js/config.js?v=4615361c" defer></script>
 <script src="js/products.js?v=8b8feca8" defer></script>
 <script src="js/events-data.js?v=be1a756b" defer></script>
 <script src="js/photos.js?v=29cabd17" defer></script>
-<script src="js/app.js?v=f5f99caf" defer></script>
-<script src="js/events.js?v=babdd38d" defer></script>
+<script src="js/app.js?v=b53c383e" defer></script>
+<script src="js/events.js?v=e491e6cc" defer></script>
 </head>
 <body>
 <main id="main" class="wrap">
@@ -81,7 +81,7 @@
             <div class="field">
               <label for="e-date">Event date</label>
               <input id="e-date" name="date" type="date" required>
-              <div class="err">That date has passed. Please choose a future date.</div>
+              <div class="err">Events must be booked at least 2 weeks ahead. Please choose a later date.</div><div class="hint">Events need at least 2 weeks' notice.</div>
             </div>
             <div class="field">
               <label for="e-venue">Venue / location</label>
@@ -100,7 +100,7 @@
           </div>
           <div class="panel" style="background:var(--cream);box-shadow:none" id="estimate" aria-live="polite"></div>
           <button class="btn btn-wa btn-block" type="submit">Prepare my enquiry</button>
-          <p class="small muted" style="margin:0">No payment is needed yet. We'll confirm availability first.</p>
+          <p class="small muted" style="margin:0">No payment is needed yet. We'll confirm availability first. By sending an enquiry you agree to our <a href="terms.html#events" target="_blank" rel="noopener">Terms &amp; Conditions</a>.</p>
         </form>
       </div>
 
@@ -119,12 +119,14 @@
         <div class="panel">
           <h3>Terms &amp; conditions</h3>
           <ul class="small" style="padding-left:18px;margin:0">
+            <li>Events must be booked at least <b>2 weeks</b> before the event date.</li>
             <li>Bookings become valid when the client has paid at least 40% of the selected package.</li>
-            <li>Payment in full must be completed at least 14 working days before delivery.</li>
+            <li>Payment in full must be completed at least 14 working days before delivery. For bookings made closer to the event than that, full payment is due when the booking is confirmed.</li>
             <li>Package prices may change over time due to changes in product prices. To avoid any increases, full payment upfront is recommended.</li>
             <li>No refund is issued on cancellation, except where cancellation arises from a force majeure event, in which case 40% of the amount paid is refunded.</li>
             <li>Transportation cost is not included in any package.</li>
           </ul>
+          <p class="small" style="margin:10px 0 0"><a href="terms.html#events">Read the full Terms &amp; Conditions</a></p>
         </div>
       </div>
     </div>
