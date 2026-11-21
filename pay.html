@@ -44,6 +44,19 @@
   <div class="stack" id="top"></div>
   <h2 style="margin-top:24px;font-size:1.3rem">Pay to any of these</h2>
   <div class="stack" id="methods"></div>
+  <section id="paid-box" class="panel" style="margin-top:20px" hidden>
+    <h2 style="font-size:1.3rem;margin-bottom:6px">Already paid? Let us know</h2>
+    <p class="muted" style="margin-top:0">After sending the money, tell us here so we can confirm it and send your receipt.</p>
+    <form class="form" id="paid-form" novalidate>
+      <div class="field"><label>What did you pay?</label>
+        <div class="choice" id="kind-choices"></div></div>
+      <div class="field" id="other-field" hidden><label for="p-amt">Amount paid (GH₵)</label><input id="p-amt" type="number" min="1" step="1" inputmode="decimal"><div class="err">Please enter the amount you paid.</div></div>
+      <div class="field"><label for="p-method">Paid with</label><select id="p-method"></select></div>
+      <label class="check"><input type="checkbox" id="p-ok"> <span>I have sent this amount using reference <b id="p-ref"></b>.</span></label>
+      <button class="btn btn-block" type="submit" id="p-send" disabled>I've paid</button>
+    </form>
+    <div id="p-result" style="margin-top:12px"></div>
+  </section>
   <div class="notice warn" style="margin-top:16px"><b>Stay safe:</b> we will never ask for your PIN. Always use your reference so we can match your payment.</div>
   <p style="margin-top:16px"><a class="btn btn-wa" data-wa="Hello Break-a-Fast! I have a question about my payment." target="_blank" rel="noopener">Questions? Chat on WhatsApp</a></p>
 </main>
@@ -62,6 +75,41 @@
     document.getElementById("methods").innerHTML = C.paymentMethods.map((m) =>
       row(m.kind === "bank" ? `${m.name} · ${m.bank}` : m.name, m.number, m.number, `Account name: <b>${esc(m.accountName)}</b>${m.ussd ? ` · Dial ${esc(m.ussd)}` : ""}`)).join("");
     document.querySelectorAll("[data-copy]").forEach((b) => b.addEventListener("click", () => copyText(b.dataset.copy, b)));
+
+    // Event bookings: report a payment (deposit / full / other)
+    const t = q.get("t"), full = Number(q.get("full"));
+    if (okRef && ref.startsWith("EVT-") && t) {
+      const box = document.getElementById("paid-box"); box.hidden = false;
+      document.getElementById("p-ref").textContent = ref;
+      const opts = [];
+      if (amt > 0) opts.push(["deposit", `${C.eventDepositPercent}% deposit`, amt]);
+      if (full > 0 && full !== amt) opts.push(["full", "Full amount", full]);
+      opts.push(["other", "Another amount", 0]);
+      document.getElementById("kind-choices").innerHTML = opts.map(([k, l, v], i) => `<label><input type="radio" name="kind" value="${k}" data-amt="${v}"${i === 0 ? " checked" : ""}> <span>${esc(l)}${v ? `<small>${money(v)}</small>` : ""}</span></label>`).join("");
+      document.getElementById("p-method").innerHTML = C.paymentMethods.map((m) => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join("");
+      const f = document.getElementById("paid-form"), other = document.getElementById("other-field"), send = document.getElementById("p-send"), ok = document.getElementById("p-ok");
+      const kind = () => f.querySelector("input[name=kind]:checked");
+      const upd = () => { other.hidden = kind().value !== "other"; };
+      f.querySelectorAll("input[name=kind]").forEach((r) => r.addEventListener("change", upd)); upd();
+      ok.addEventListener("change", () => (send.disabled = !ok.checked));
+      f.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const k = kind(), amount = k.value === "other" ? Number(document.getElementById("p-amt").value) : Number(k.dataset.amt);
+        other.classList.toggle("invalid", !(amount > 0));
+        if (!(amount > 0)) return BAF.focusField(document.getElementById("p-amt"));
+        send.disabled = true; send.textContent = "Sending…";
+        try {
+          const r = await BAF.api("/api/event-paid", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t, kind: k.value, amount, payment: document.getElementById("p-method").value }) });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(j.error || "Could not send. Please try again.");
+          f.hidden = true;
+          document.getElementById("p-result").innerHTML = `<div class="notice ok"><b>Thank you!</b> We've been told about your payment of ${money(amount)} for ${esc(ref)}. We'll check it and send your receipt on WhatsApp.</div>`;
+        } catch (err) {
+          document.getElementById("p-result").innerHTML = `<div class="notice warn"><b>${esc(err.message)}</b></div>`;
+          send.disabled = false; send.textContent = "I've paid";
+        }
+      });
+    }
   });
 </script>
 </body>

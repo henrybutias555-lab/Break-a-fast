@@ -307,9 +307,9 @@ function createApp(cfg) {
     while (n > 0) { d.setUTCDate(d.getUTCDate() - 1); const w = d.getUTCDay(); if (w !== 0 && w !== 6) n--; }
     return d.toISOString().slice(0, 10);
   }
-  function invoicePage(x, asReceipt = false) {
+  function invoicePage(x, asReceipt = false, code = "") {
     if (!x) return verifyPage(null).replace("Order verification", asReceipt ? "Receipt" : "Invoice");
-    const R = asReceipt && x.t === "o";      // receipts are for shop orders after payment is reported
+    const R = asReceipt && (x.t === "o" || !!x.pr);  // shop orders after payment, or events with a reported payment
     const DOC = R ? "Receipt" : "Invoice";
     const site = ALLOWED_ORIGINS[0] || "";
     const isE = x.t === "e";
@@ -324,13 +324,17 @@ function createApp(cfg) {
       balDue: isE ? (balDue > today ? niceDate(balDue) : "On confirmation of booking") : "",
       paid: !isE && !!x.py, delivery: !isE && x.c.f === "Delivery", custom: isE && !x.tot,
       biz: C.businessName, payRef: x.ref, site, receipt: R, doc: DOC,
-      method: !isE ? method(x.pm).name : "", paidOn: R && x.py && x.py.at ? niceDate(x.py.at.slice(0, 10)) : niceDate(today)
+      method: R ? method((isE && x.pr ? x.pr.pm : x.pm) || x.pm).name : (!isE ? method(x.pm).name : ""),
+      paidOn: R && x.py && x.py.at ? niceDate(x.py.at.slice(0, 10)) : R && x.pr && x.pr.at ? niceDate(x.pr.at.slice(0, 10)) : niceDate(today),
+      reported: isE && x.pr ? x.pr.amt : 0, prKind: isE && x.pr ? x.pr.k : "", code
     };
     const pay = METHODS.map((m) => `<tr><td>${esc(m.name)}${m.kind === "bank" ? " · " + esc(m.bank) : ""}</td><td><b>${esc(m.number)}</b></td><td>${esc(m.accountName)}</td></tr>`).join("");
     const when = isE ? `${esc(x.ty)} · ${esc(niceDate(x.d))}` : `${esc(x.c.f)} · ${esc(niceDate(x.c.d))}, ${esc(x.c.tm)}`;
     const where = isE ? (x.v ? esc(x.v) : "Venue to be shared") : (x.c.f === "Delivery" ? esc(x.c.a || "Address to be confirmed") : "Pick-up");
     const menu = isE && (x.pi || []).length ? `<h3>Menu choices</h3><ul class="menu">${x.pi.map((p) => `<li><b>${esc(p[0])}:</b> ${esc(p[1].length ? p[1].join(", ") : "to be suggested")}</li>`).join("")}<li><b>Bar set-up</b></li></ul>` : "";
-    const terms = isE
+    const terms = R && isE
+      ? `This receipt confirms payment received for booking ${x.ref}. Full payment is due at least 14 working days before the event. No refund on cancellation except force majeure (40% of the amount paid refunded).`
+      : isE
       ? `Booking is valid once ${C.eventDepositPercent}% is paid. Full payment is due at least 14 working days before the event (or on confirmation for later bookings). Transport is not included in package prices. No refund on cancellation except force majeure (40% of the amount paid refunded). Prices may change after 2–3 months.`
       : R ? `This receipt confirms payment for order ${x.ref}. For questions, call or WhatsApp ${C.phone} quoting your reference.`
       : `Orders are prepared once full payment is confirmed. Delivery fee depends on location. Please quote the reference when paying.`;
@@ -363,11 +367,13 @@ table.items td{padding:9px 6px;border-bottom:1px solid #f0e4d2;vertical-align:to
 </head><body>
 <div class="tools">
   <h2>Prepare ${DOC.toLowerCase()} ${esc(x.ref)}</h2>
-  ${R ? `<div style="background:#fff7e6;border:1px solid #f1d39a;border-radius:10px;padding:8px 10px;font-size:.85rem"><b>Before sending:</b> check your ${esc(method(x.pm).name)} SMS shows the money with reference <b>${esc(x.ref)}</b>. Only send a receipt once the payment has arrived.</div>` : ""}
+  ${R ? `<div style="background:#fff7e6;border:1px solid #f1d39a;border-radius:10px;padding:8px 10px;font-size:.85rem"><b>Before sending:</b> check your ${esc(data.method)} SMS shows the money with reference <b>${esc(x.ref)}</b>. Only send a receipt once the payment has arrived.</div>` : ""}
   <div class="row">
     <label>${isE ? "Transport (GH₵)" : data.delivery ? "Delivery fee (GH₵)" : "Extra charge (GH₵)"}<input id="fee" autocomplete="off" type="number" min="0" step="1" inputmode="decimal" placeholder="0"></label>
     <label>Discount (GH₵)<input id="disc" autocomplete="off" type="number" min="0" step="1" inputmode="decimal" placeholder="0"></label>
   </div>
+  ${R && isE ? `<label>Amount received now (GH₵)<input id="recv" autocomplete="off" type="number" min="0" step="1" inputmode="decimal" value="${esc(x.pr.amt)}"></label>
+  <label>Paid earlier (GH₵)<input id="prev" autocomplete="off" type="number" min="0" step="1" inputmode="decimal" placeholder="0"></label>` : ""}
   ${data.custom ? `<label>Quoted price (GH₵)<input id="quote" autocomplete="off" type="number" min="0" step="1" inputmode="decimal" placeholder="Custom quote"></label>` : ""}
   <label>Note on invoice (optional)<textarea id="noteIn" autocomplete="off" rows="2" placeholder="e.g. Delivery to East Legon, set-up from 2pm"></textarea></label>
   <div class="btns"><button id="pdf" type="button">⬇ Download PDF</button><a class="wa" id="wa" target="_blank" rel="noopener">Send to customer on WhatsApp</a><button id="print" type="button" style="background:#6f5547">Print</button></div>
@@ -377,7 +383,7 @@ table.items td{padding:9px 6px;border-bottom:1px solid #f0e4d2;vertical-align:to
   <img class="wm" src="${LOGOS.watermark || esc(site) + "/assets/img/logo-watermark.jpg"}" alt="">
   <div class="top">
     <div class="brand"><img src="${LOGOS.header || esc(site) + "/assets/img/logo-invoice.jpg"}" alt=""><div><b>${esc(C.businessName)}</b><span>${esc(C.tagline)}<br>${esc(C.phone)} / ${esc(C.altPhone)}</span></div></div>
-    <div class="inv"><h1>${DOC.toUpperCase()}</h1><div>${R ? "For order" : "No."} <b>${esc(x.ref)}</b></div><div>${R ? "Paid on" : "Date"}: ${esc(R ? data.paidOn : niceDate(today))}</div>${R ? `<div class="stamp">PAID</div>` : ""}</div>
+    <div class="inv"><h1>${DOC.toUpperCase()}</h1><div>${R ? (isE ? "For booking" : "For order") : "No."} <b>${esc(x.ref)}</b></div><div>${R ? "Paid on" : "Date"}: ${esc(R ? data.paidOn : niceDate(today))}</div>${R ? `<div class="stamp" id="stamp">PAID</div>` : ""}</div>
   </div>
   <div class="cols">
     <div><h3>Bill to</h3><b>${esc(name)}</b><br>${esc(phone)}<br>${where}</div>
@@ -387,14 +393,14 @@ table.items td{padding:9px 6px;border-bottom:1px solid #f0e4d2;vertical-align:to
   <div class="sum" id="sum"></div>
   ${menu}
   <div class="box" id="noteBox" hidden><h3>Note</h3><div class="note" id="noteOut"></div></div>
-  ${R ? `<div class="box"><h3>Payment received</h3><table class="pay"><tr><td>Method</td><td><b>${esc(method(x.pm).name)}</b></td></tr><tr><td>Reference</td><td><b>${esc(x.ref)}</b></td></tr><tr><td>Paid to</td><td>${esc(method(x.pm).accountName)}</td></tr></table></div><p style="margin-top:14px;font-weight:700;color:#3b1f14">Thank you for your order!</p>` : `<div class="box"><h3>How to pay · use reference <b style="color:#a8174f">${esc(x.ref)}</b></h3><table class="pay">${pay}</table></div>`}
+  ${R ? `<div class="box"><h3>Payment received</h3><table class="pay"><tr><td>Method</td><td><b>${esc(data.method)}</b></td></tr><tr><td>Reference</td><td><b>${esc(x.ref)}</b></td></tr><tr><td>Paid to</td><td>${esc(METHODS[0].accountName)}</td></tr></table></div><p style="margin-top:14px;font-weight:700;color:#3b1f14">${isE ? "Thank you for booking with us!" : "Thank you for your order!"}</p>` : `<div class="box"><h3>How to pay · use reference <b style="color:#a8174f">${esc(x.ref)}</b></h3><table class="pay">${pay}</table></div>`}
   <p class="terms">${esc(terms)}</p>
 </div>
 <script>
 const D=${JSON.stringify(data).replace(/</g, "\\u003c")};
 const $=(i)=>document.getElementById(i), fmt=(n)=>"GH₵"+Number(n).toLocaleString("en-US",{maximumFractionDigits:2});
 const key="baf_inv_"+D.ref; let saved={}; try{saved=JSON.parse(localStorage.getItem(key)||"{}")}catch(e){}
-["fee","disc","quote","noteIn"].forEach(k=>{if($(k)&&saved[k]!=null)$(k).value=saved[k]});
+["fee","disc","quote","noteIn","prev"].forEach(k=>{if($(k)&&saved[k]!=null)$(k).value=saved[k]});
 function e(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
 function draw(){
   const fee=+($("fee").value||0), disc=+($("disc").value||0), quote=$("quote")?+($("quote").value||0):0;
@@ -404,16 +410,20 @@ function draw(){
   $("lines").innerHTML=rows.map(r=>"<tr><td>"+e(r[0])+"</td><td class=n>"+r[1]+"</td><td class=n>"+fmt(r[2])+"</td><td class=n>"+fmt(r[3])+"</td></tr>").join("");
   const sub=rows.reduce((s,r)=>s+r[3],0), tot=Math.max(0,sub-disc);
   let h="<div><span>Subtotal</span><span>"+fmt(sub)+"</span></div>"+(disc?"<div><span>Discount</span><span>−"+fmt(disc)+"</span></div>":"")+"<div class=tot><span>Total</span><span>"+fmt(tot)+"</span></div>";
-  if(D.isE){const dep=Math.round(tot*D.pct)/100; h+="<div class=dep><span>"+D.pct+"% deposit to book</span><span>"+fmt(dep)+"</span></div><div><span>Balance</span><span>"+fmt(tot-dep)+"</span></div><div><span>Balance due</span><span>"+e(D.balDue)+"</span></div>"; if(!fee) h+="<div style='font-size:.8rem;color:#6f5547'><span>Transport to be added</span></div>";}
+  if(D.isE&&D.receipt){const recv=+($("recv").value||0), prev=+($("prev").value||0), paid=recv+prev, bal=Math.max(0,tot-paid);
+    h+="<div class=dep><span>Amount received</span><span>"+fmt(recv)+"</span></div>"+(prev?"<div><span>Paid earlier</span><span>"+fmt(prev)+"</span></div>":"")+"<div><span>Total paid</span><span>"+fmt(paid)+"</span></div><div><span>Balance remaining</span><span>"+fmt(bal)+"</span></div>"+(bal>0?"<div><span>Balance due</span><span>"+e(D.balDue)+"</span></div>":"");
+    if($("stamp")) $("stamp").textContent = bal<=0 ? "PAID IN FULL" : (paid>=Math.round(tot*D.pct)/100 ? "DEPOSIT PAID" : "PART PAYMENT");
+    D._paid=recv; D._bal=bal; D._total=paid;}
+  else if(D.isE){const dep=Math.round(tot*D.pct)/100; h+="<div class=dep><span>"+D.pct+"% deposit to book</span><span>"+fmt(dep)+"</span></div><div><span>Balance</span><span>"+fmt(tot-dep)+"</span></div><div><span>Balance due</span><span>"+e(D.balDue)+"</span></div>"; if(!fee) h+="<div style='font-size:.8rem;color:#6f5547'><span>Transport to be added</span></div>";}
   else if(D.receipt) h+="<div class=dep><span>Amount paid</span><span>"+fmt(tot)+"</span></div><div><span>Paid by</span><span>"+e(D.method)+"</span></div><div><span>Balance</span><span>"+fmt(0)+"</span></div>";
   else h+="<div><span>Status</span><span>"+(D.paid?"Customer reports paid":"Payment due before preparation")+"</span></div>";
   $("sum").innerHTML=h;
   const n=$("noteIn").value.trim(); $("noteBox").hidden=!n; $("noteOut").textContent=n;
   const ph="233"+String(D.phone).replace(/^0/,"");
-  const due=D.isE?Math.round(tot*D.pct)/100:tot, link=D.site+"/pay.html?ref="+encodeURIComponent(D.payRef)+"&amt="+due+(D.isE?"&for=deposit":"");
-  const msg=D.receipt ? "Hello "+D.name.split(" ")[0]+", thank you! Here is your receipt for order "+D.ref+" from "+D.biz+".\\nAmount paid: "+fmt(tot)+" by "+D.method+".\\nPaid on: "+D.paidOn+"\\n\\nWe'll be in touch about your "+(D.delivery?"delivery":"pick-up")+". Thank you for choosing us!" : "Hello "+D.name.split(" ")[0]+", here is your invoice "+D.ref+" from "+D.biz+".\\nTotal: "+fmt(tot)+(D.isE?"\\n"+D.pct+"% deposit to book: "+fmt(due)+"\\nBalance due: "+D.balDue:"")+"\\n\\nReference:\\n"+D.payRef+"\\n\\nTap to copy the reference and payment numbers:\\n"+link+"\\n\\nThank you!";
+  const due=D.isE?Math.round(tot*D.pct)/100:tot, link=D.site+"/pay.html?ref="+encodeURIComponent(D.payRef)+"&amt="+due+(D.isE?"&for=deposit&full="+tot+(D.code?"&t="+encodeURIComponent(D.code):""):"");
+  const msg=(D.receipt&&D.isE) ? "Hello "+D.name.split(" ")[0]+", thank you! Here is your receipt for booking "+D.ref+" from "+D.biz+".\\nAmount received: "+fmt(D._paid)+" by "+D.method+".\\nBalance remaining: "+fmt(D._bal)+(D._bal>0?" (due "+D.balDue+")":"")+"\\n\\nThank you for booking with us!" : D.receipt ? "Hello "+D.name.split(" ")[0]+", thank you! Here is your receipt for order "+D.ref+" from "+D.biz+".\\nAmount paid: "+fmt(tot)+" by "+D.method+".\\nPaid on: "+D.paidOn+"\\n\\nWe'll be in touch about your "+(D.delivery?"delivery":"pick-up")+". Thank you for choosing us!" : "Hello "+D.name.split(" ")[0]+", here is your invoice "+D.ref+" from "+D.biz+".\\nTotal: "+fmt(tot)+(D.isE?"\\n"+D.pct+"% deposit to book: "+fmt(due)+"\\nBalance due: "+D.balDue:"")+"\\n\\nReference:\\n"+D.payRef+"\\n\\nTap to copy the reference and payment numbers:\\n"+link+"\\n\\nThank you!";
   $("wa").href="https://wa.me/"+ph+"?text="+encodeURIComponent(msg);
-  try{localStorage.setItem(key,JSON.stringify({fee:$("fee").value,disc:$("disc").value,quote:$("quote")?$("quote").value:"",noteIn:$("noteIn").value}))}catch(e){}
+  try{localStorage.setItem(key,JSON.stringify({recv:$("recv")?$("recv").value:"",prev:$("prev")?$("prev").value:"",fee:$("fee").value,disc:$("disc").value,quote:$("quote")?$("quote").value:"",noteIn:$("noteIn").value}))}catch(e){}
 }
 document.querySelectorAll(".tools input,.tools textarea").forEach(i=>["input","change","keyup","blur"].forEach(ev=>i.addEventListener(ev,draw)));
 ["pageshow","load","focus"].forEach(ev=>window.addEventListener(ev,draw));
@@ -447,7 +457,8 @@ draw(); setTimeout(draw,300);
       rows = row("Event", esc(x.ty)) + row("Date", esc(niceDate(x.d))) + row("Venue", esc(x.v || "To be shared")) + row("Package", esc((x.g ? x.g + " / " : "") + x.pk)) + row("Guests", esc(x.gu)) +
         x.ad.map((a) => row("Extra", `${esc(a[0])} · ${money(a[1])}`)).join("") +
         (x.pi || []).map((p) => row(p[0] + (p[2] ? "" : ` (${p[1].length} of ${p[3]})`), esc(p[1].length ? p[1].join(", ") : "Not chosen yet, please suggest"))).join("") +
-        (x.tot ? row("Estimated total", `<b>${money(x.tot)}</b> (excl. transport)`) + row(`${C.eventDepositPercent}% token`, `<b>${money(x.dep)}</b>`) : row("Price", "Custom quote needed")) +
+        (x.pr ? row("Payment reported", `<b>${money(x.pr.amt)}</b> by ${esc(method(x.pr.pm).name)} (${esc(x.pr.k)})`) : "") +
+      (x.tot ? row("Estimated total", `<b>${money(x.tot)}</b> (excl. transport)`) + row(`${C.eventDepositPercent}% token`, `<b>${money(x.dep)}</b>`) : row("Price", "Custom quote needed")) +
         row("Name", esc(x.n)) + row("Phone", `<a href="tel:${esc(x.p)}">${esc(x.p)}</a> · <a href="https://wa.me/233${esc(x.p.slice(1))}">WhatsApp</a>`) + (x.m ? row("Message", esc(x.m)) : "") + row("Preferred payment", esc(method(x.pm).name));
     }
     return `<div style="font-family:Arial,sans-serif;max-width:560px">
@@ -461,6 +472,7 @@ draw(); setTimeout(draw,300);
     let subject, title, color;
     if (kind === "order") { subject = `🟡 New order ${x.ref} · ${money(x.tot)} · awaiting payment`; title = `New order ${x.ref}: awaiting payment`; color = "#c27a12"; }
     else if (kind === "paid") { subject = `🟢 Payment reported ${x.ref} · ${money(x.tot)} · ${method(x.pm).name}${x.py.txn ? " · TXN " + x.py.txn : ""} · ${x.c.tm}`; title = `Customer reported payment for ${x.ref}. Check your ${method(x.pm).name} SMS.`; color = "#2f7d4a"; }
+    else if (kind === "eventpaid") { const k = { deposit: "Deposit", full: "Full payment", other: "Payment" }[x.pr.k] || "Payment"; subject = `🟢 ${k} reported ${x.ref} · ${money(x.pr.amt)} · ${method(x.pr.pm).name} · ${x.ty} ${niceDate(x.d)}`; title = `${k} of ${money(x.pr.amt)} reported for ${x.ref}. Check your ${method(x.pr.pm).name} SMS.`; color = "#2f7d4a"; }
     else { subject = `🎉 Event enquiry ${x.ref} · ${x.ty} · ${niceDate(x.d)}`; title = `New event enquiry ${x.ref}`; color = "#a8174f"; }
     const ctrl = new AbortController(); setTimeout(() => ctrl.abort(), 20000);
     return fetch(ALERT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ key: ALERT_KEY, subject, html: alertHtml(title, color, x, url, inv) }), redirect: "follow", signal: ctrl.signal })
@@ -500,7 +512,7 @@ draw(); setTimeout(draw,300);
       }
       if (req.method === "GET" && p.startsWith("/i/")) {
         const t = decodeURIComponent(p.slice(3)).replace(/[^0-9A-Za-z._-]/g, "");
-        return { ...out(200, invoicePage(t.includes(".") ? open(t) : openShort(t)), "text/html"), headers: {} };
+        return { ...out(200, invoicePage(t.includes(".") ? open(t) : openShort(t), false, t), "text/html"), headers: {} };
       }
       if (req.method === "POST" && p.startsWith("/api/")) {
         if (limited(req.ip || "?")) return out(429, { error: "Too many requests. Please wait a few minutes." });
@@ -528,6 +540,19 @@ draw(); setTimeout(draw,300);
           const token = seal(o), v = `${base}/v/${shortCode(o)}`;
           waits.push(sendAlert("paid", o, v, `${base}/r/${token}`));
           return out(200, { order: o, token, verifyUrl: v, message: orderText(o, v) });
+        }
+        if (p === "/api/event-paid") {
+          const t = String(b.t || "").replace(/[^0-9A-Za-z._-]/g, "");
+          const e = t.includes(".") ? open(t) : openShort(t);
+          need(e && e.t === "e", "This booking link is not valid. Please message us on WhatsApp.");
+          const k = ["deposit", "full", "other"].includes(b.kind) ? b.kind : "other";
+          const amt = Math.round(Number(b.amount) * 100) / 100;
+          need(amt > 0 && amt <= 1000000, "Please enter the amount you paid.");
+          const pm = method(b.payment) ? b.payment : e.pm;
+          const e2 = { ...e, pr: { amt, k, pm, at: new Date().toISOString() } };
+          const v = `${base}/v/${shortCode(e)}`;
+          waits.push(sendAlert("eventpaid", e2, v, `${base}/r/${seal(e2)}`));
+          return out(200, { ok: true, ref: e.ref });
         }
         if (p === "/api/event") {
           const e = buildEvent(b), v = `${base}/v/${shortCode(e)}`;
