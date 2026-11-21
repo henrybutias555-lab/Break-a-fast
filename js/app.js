@@ -351,7 +351,8 @@
       const last = new Date(Date.UTC(+y.value, +m.value, 0)).getUTCDate();
       if (+d.value > last) d.value = last;
       input.value = `${y.value}-${pad(m.value)}-${pad(d.value)}`;
-      box.closest(".field")?.classList.remove("invalid");
+      // show the error straight away if the date is earlier than allowed
+      box.closest(".field")?.classList.toggle("invalid", !!input.min && input.value < input.min);
       input.dispatchEvent(new Event("change", { bubbles: true }));
     };
     [d, m, y].forEach((s) => s.addEventListener("change", sync));
