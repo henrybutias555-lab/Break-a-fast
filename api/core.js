@@ -5,6 +5,7 @@ function createApp(cfg) {
   const LOGOS = cfg.LOGOS || {};
   // Owner key: an HMAC of the order code, added only to links in the owner's emails.
   const ownerKey = (code) => crypto.createHmac("sha256", SECRET).update("owner:" + code).digest("base64url").slice(0, 22);
+  const docSig = (body) => crypto.createHmac("sha256", SECRET).update("doc:" + body).digest("base64url").slice(0, 14);
   const okOwner = (code, k) => { const a = Buffer.from(String(k || "")), g = Buffer.from(ownerKey(code)); return a.length === g.length && crypto.timingSafeEqual(a, g); };  // lets the owner confirm payments from the verify page          // data: URIs for the invoice (no cross-site image loading)
   const C = W.BAF_CONFIG, PRODUCTS = W.BAF_PRODUCTS, GROUPS = W.BAF_EVENT_GROUPS;
   const METHODS = C.paymentMethods;
@@ -341,7 +342,8 @@ function createApp(cfg) {
     while (n > 0) { d.setUTCDate(d.getUTCDate() - 1); const w = d.getUTCDay(); if (w !== 0 && w !== 6) n--; }
     return d.toISOString().slice(0, 10);
   }
-  function invoicePage(x, asReceipt = false, code = "") {
+  function invoicePage(x, asReceipt = false, code = "", opts = {}) {
+    const RO = opts.preset || null;           // read-only view for the customer
     if (!x) return verifyPage(null).replace("Order verification", asReceipt ? "Receipt" : "Invoice");
     const R = asReceipt && (x.t === "o" || !!x.pr);  // shop orders after payment, or events with a reported payment
     const DOC = R ? "Receipt" : "Invoice";
@@ -361,6 +363,7 @@ function createApp(cfg) {
       method: R ? method((isE && x.pr ? x.pr.pm : x.pm) || x.pm).name : (!isE ? method(x.pm).name : ""),
       paidOn: R && x.py && x.py.at ? niceDate(x.py.at.slice(0, 10)) : R && x.pr && x.pr.at ? niceDate(x.pr.at.slice(0, 10)) : niceDate(today),
       pendDate: !isE && x.c.tm === PENDING ? x.c.d : "",
+      ro: RO, ownerKey: opts.owner && code ? ownerKey(code) : "", api: "",
       confirmed: !!x.cf, reported: isE && x.pr ? x.pr.amt : 0, prKind: isE && x.pr ? x.pr.k : "", code
     };
     const pay = METHODS.map((m) => `<tr><td>${esc(m.name)}${m.kind === "bank" ? " · " + esc(m.bank) : ""}</td><td><b>${esc(m.number)}</b></td><td>${esc(m.accountName)}</td></tr>`).join("");
@@ -396,7 +399,7 @@ table.items td{padding:9px 6px;border-bottom:1px solid #f0e4d2;vertical-align:to
 .menu{margin:6px 0 0;padding-left:18px;font-size:.92rem}.pay{width:100%;border-collapse:collapse;font-size:.9rem;margin-top:6px}.pay td{padding:6px;border-bottom:1px solid #f0e4d2}
 .box{margin-top:18px}.note{background:#fbf3e6;border-radius:10px;padding:10px 12px;font-size:.88rem;white-space:pre-wrap}.terms{font-size:.8rem;color:#6f5547;margin-top:18px}
 .stamp{display:inline-block;border:2px solid #2f7d4a;color:#2f7d4a;font-weight:800;padding:2px 10px;border-radius:6px;font-size:.85rem;margin-top:6px}
-@media (max-width:600px){.sheet{padding:20px 16px}.top,.cols{grid-template-columns:1fr;display:grid}.inv{text-align:left}.tools .row{grid-template-columns:1fr}}
+@media (max-width:600px){table.items{font-size:.82rem}table.items th,table.items td{padding:7px 3px}table.items th{font-size:.68rem}.sheet{padding:20px 14px}.top,.cols{grid-template-columns:1fr;display:grid}.inv{text-align:left}.tools .row{grid-template-columns:1fr}}
 .bar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:#3b1f14;padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:flex;gap:8px;box-shadow:0 -4px 16px rgba(0,0,0,.2)}
 .bar a,.bar button{flex:1;font:800 .95rem system-ui;padding:13px 10px;border-radius:999px;border:0;text-align:center;text-decoration:none;color:#fff;cursor:pointer}
 .bar .wa{background:#1fa855}.bar .pdfb{background:#a8174f}body{padding-bottom:84px}
@@ -406,7 +409,7 @@ body.pdfmode .top,body.pdfmode .cols{display:flex}body.pdfmode .cols{display:gri
 </style>
 <script src="${esc(site)}/assets/vendor/html2pdf.bundle.min.js" defer></script>
 </head><body>
-<div class="tools">
+<div class="tools"${RO ? ' style="display:none"' : ""}>
   <h2>Prepare ${DOC.toLowerCase()} ${esc(x.ref)}</h2>
   ${R && x.cf ? `<div style="background:#ecf7ef;border:1px solid #b7dfc3;border-radius:10px;padding:8px 10px;font-size:.85rem;color:#2f7d4a"><b>✅ Payment confirmed by you.</b> Download the PDF and send it to the customer.</div>` : ""}
   ${R && !x.cf ? `<div style="background:#fff7e6;border:1px solid #f1d39a;border-radius:10px;padding:8px 10px;font-size:.85rem"><b>Before sending:</b> check your ${esc(data.method)} SMS shows the money with reference <b>${esc(x.ref)}</b>. Only send a receipt once the payment has arrived.</div>` : ""}
@@ -418,8 +421,8 @@ body.pdfmode .top,body.pdfmode .cols{display:flex}body.pdfmode .cols{display:gri
   <label>Paid earlier (GH₵)<input id="prev" autocomplete="off" type="number" min="0" step="1" inputmode="decimal" placeholder="0"></label>` : ""}
   ${data.custom ? `<label>Quoted price (GH₵)<input id="quote" autocomplete="off" type="number" min="0" step="1" inputmode="decimal" placeholder="Custom quote"></label>` : ""}
   <label>Note on invoice (optional)<textarea id="noteIn" autocomplete="off" rows="2" placeholder="e.g. Delivery to East Legon, set-up from 2pm"></textarea></label>
-  <div class="btns"><button id="share" type="button" style="background:#1fa855">📤 Share PDF on WhatsApp</button><button id="pdf" type="button">⬇ Download PDF</button><a class="wa" id="wa" target="_blank" rel="noopener" style="background:#6f5547">Message only</a><button id="print" type="button" style="background:#6f5547">Print</button></div>
-  <div style="font-size:.8rem;color:#6f5547" id="tip">Tap <b>Share PDF</b>, choose WhatsApp, then pick the customer. The PDF and message are sent together.</div>
+  <div class="btns"><button id="share" type="button" style="background:#6f5547">📤 Share PDF file</button><button id="pdf" type="button">⬇ Download PDF</button><a class="wa" id="wa" target="_blank" rel="noopener" style="background:#1fa855">💬 Send to customer (opens their chat)</a><button id="print" type="button" style="background:#6f5547">Print</button></div>
+  <div style="font-size:.8rem;color:#6f5547" id="tip">Tap <b>Send to customer</b>: WhatsApp opens in the customer's chat with the message and a link to view/download this ${DOC.toLowerCase()} as a PDF.</div>
 </div>
 <div class="sheet">
   <img class="wm" src="${LOGOS.watermark || esc(site) + "/assets/img/logo-watermark.jpg"}" alt="">
@@ -438,12 +441,14 @@ body.pdfmode .top,body.pdfmode .cols{display:flex}body.pdfmode .cols{display:gri
   ${R ? `<div class="box"><h3>Payment received</h3><table class="pay"><tr><td>Method</td><td><b>${esc(data.method)}</b></td></tr><tr><td>Reference</td><td><b>${esc(x.ref)}</b></td></tr><tr><td>Paid to</td><td>${esc(METHODS[0].accountName)}</td></tr></table></div><p style="margin-top:14px;font-weight:700;color:#3b1f14">${isE ? "Thank you for booking with us!" : "Thank you for your order!"}</p>` : `<div class="box"><h3>How to pay · use reference <b style="color:#a8174f">${esc(x.ref)}</b></h3><table class="pay">${pay}</table></div>`}
   <p class="terms">${esc(terms)}</p>
 </div>
-<div class="bar"><button class="pdfb" type="button" id="pdf2">⬇ PDF</button><button class="wa" type="button" id="share2">📤 Share ${R ? "receipt" : "invoice"} PDF</button><a id="wa2" hidden></a></div>
+${RO ? `<div class="bar"><button class="pdfb" type="button" id="pdf2" style="flex:1">⬇ Download ${R ? "receipt" : "invoice"} PDF</button><button id="share2" hidden></button><a id="wa2" hidden></a></div>`
+      : `<div class="bar"><button class="pdfb" type="button" id="pdf2">⬇ PDF</button><a class="wa" id="wa2" target="_blank" rel="noopener">💬 Send to customer</a><button id="share2" hidden></button></div>`}
 <script>
 const D=${JSON.stringify(data).replace(/</g, "\\u003c")};
 const $=(i)=>document.getElementById(i), fmt=(n)=>"GH₵"+Number(n).toLocaleString("en-US",{maximumFractionDigits:2});
 const key="baf_inv_"+D.ref; let saved={}; try{saved=JSON.parse(localStorage.getItem(key)||"{}")}catch(e){}
-["fee","disc","quote","noteIn","prev"].forEach(k=>{if($(k)&&saved[k]!=null)$(k).value=saved[k]});
+if(D.ro){ const m={fee:"f",disc:"d",quote:"q",noteIn:"n",recv:"r",prev:"p"}; Object.keys(m).forEach(k=>{ if($(k)) $(k).value = D.ro[m[k]] ?? ""; }); saved={}; }
+else ["fee","disc","quote","noteIn","prev"].forEach(k=>{if($(k)&&saved[k]!=null)$(k).value=saved[k]});
 function e(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
 function draw(){
   const fee=+($("fee").value||0), disc=+($("disc").value||0), quote=$("quote")?+($("quote").value||0):0;
@@ -471,9 +476,24 @@ function draw(){
 document.querySelectorAll(".tools input,.tools textarea").forEach(i=>["input","change","keyup","blur"].forEach(ev=>i.addEventListener(ev,draw)));
 ["pageshow","load","focus"].forEach(ev=>window.addEventListener(ev,draw));
 window.addEventListener("beforeprint",draw);
-$("wa").addEventListener("click",(e)=>{ if(!ready()){e.preventDefault();return;} draw(); }); $("wa2").addEventListener("click",draw); $("pdf2").addEventListener("click",()=>$("pdf").click());            // runs before the link opens, so the message is always current
+async function sendLink(e){
+  e.preventDefault(); if(!ready()) return; draw();
+  const win=window.open("about:blank","_blank");   // open now (phones block pop-ups opened after waiting)
+  try{
+    const r=await fetch("/api/doc",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:D.code,k:D.ownerKey,kind:D.receipt?"r":"i",
+      f:$("fee").value,d:$("disc").value,q:$("quote")?$("quote").value:"",n:$("noteIn").value,r:$("recv")?$("recv").value:"",p:$("prev")?$("prev").value:""})});
+    const j=await r.json(); if(!r.ok) throw new Error(j.error||"Could not create the link");
+    const base=decodeURIComponent(($("wa").getAttribute("href")||"").split("?text=")[1]||"");
+    const msg=base+"\\n\\nView or download your "+(D.receipt?"receipt":"invoice")+" (PDF):\\n"+j.url;
+    const url="https://wa.me/233"+String(D.phone).replace(/^0/,"")+"?text="+encodeURIComponent(msg);
+    if(win) win.location.href=url; else location.href=url;
+  }catch(err){ if(win) win.close(); $("tip").textContent="Could not send: "+err.message; window.scrollTo({top:0,behavior:"smooth"}); }
+}
+$("wa").addEventListener("click",(e)=>{ if(D.ownerKey&&D.code){ sendLink(e); return; } if(!ready()){e.preventDefault();return;} draw(); });
+$("wa2").addEventListener("click",(e)=>{ if(D.ownerKey&&D.code){ sendLink(e); return; } draw(); }); $("pdf2").addEventListener("click",()=>$("pdf").click());            // runs before the link opens, so the message is always current
 $("print").addEventListener("click",()=>{ if(!ready()) return; draw();window.print()});
 function ready(){
+  if(D.ro) return true;
   const miss=["fee","disc"].map(id=>$(id)).filter(i=>i.value.trim()===""||Number(i.value)<0);
   ["fee","disc"].forEach(id=>$(id).closest("label").classList.toggle("bad",miss.includes($(id))));
   if(miss.length){ window.scrollTo({top:0,behavior:"smooth"}); setTimeout(()=>miss[0].focus(),300); $("tip").textContent="Please fill in the delivery/transport fee and the discount first (type 0 if none)."; return false; }
@@ -594,14 +614,29 @@ draw(); setTimeout(draw,300);
         const k = new URLSearchParams(req.search || "").get("k");
         return { ...out(200, verifyPage(t.includes(".") ? open(t) : openShort(t), t, okOwner(t, k)), "text/html"), headers: {} };
       }
+      if (req.method === "GET" && p.startsWith("/d/")) {
+        const t = decodeURIComponent(p.slice(3)).replace(/[^0-9A-Za-z._~-]/g, "");
+        const i = t.lastIndexOf("~"), body = t.slice(0, i), sig = t.slice(i + 1);
+        const g = Buffer.from(docSig(body)), a = Buffer.from(sig || "");
+        let x = null, pre = null, kind = "i";
+        if (i > 0 && a.length === g.length && crypto.timingSafeEqual(a, g)) {
+          const [k, code, f, d, q, r, pp, n] = body.split("~");
+          x = openShort(code); kind = k;
+          pre = { f, d, q, r, p: pp, n: n ? Buffer.from(n, "base64url").toString("utf8") : "" };
+          if (x && kind === "r" && x.t === "e" && !x.pr) x = { ...x, pr: { amt: Number(r) || 0, k: "other", pm: x.pm, at: new Date().toISOString() } };
+          if (x && kind === "r" && x.t === "o" && !x.py) x = { ...x, py: { txn: "", from: "", s: "", at: new Date().toISOString() } };
+        }
+        return { ...out(200, invoicePage(x, kind === "r", "", { preset: pre || {} }), "text/html"), headers: {} };
+      }
       if (req.method === "GET" && p.startsWith("/r/")) {
         const t = decodeURIComponent(p.slice(3)).replace(/[^0-9A-Za-z._-]/g, "");
-        return { ...out(200, invoicePage(t.includes(".") ? open(t) : openShort(t), true), "text/html"), headers: {} };
+        const xr = t.includes(".") ? open(t) : openShort(t);
+        return { ...out(200, invoicePage(xr, true, xr ? shortCode(xr) : "", { owner: t.includes(".") }), "text/html"), headers: {} };
       }
       if (req.method === "GET" && p.startsWith("/i/")) {
         const t = decodeURIComponent(p.slice(3)).replace(/[^0-9A-Za-z._-]/g, "");
         const xi = t.includes(".") ? open(t) : openShort(t);
-        return { ...out(200, invoicePage(xi, false, xi ? shortCode(xi) : ""), "text/html"), headers: {} };
+        return { ...out(200, invoicePage(xi, false, xi ? shortCode(xi) : "", { owner: t.includes(".") }), "text/html"), headers: {} };
       }
       if (req.method === "POST" && p.startsWith("/api/")) {
         if (limited(req.ip || "?")) return out(429, { error: "Too many requests. Please wait a few minutes." });
@@ -630,6 +665,15 @@ draw(); setTimeout(draw,300);
           const token = seal(o), v = `${base}/v/${shortCode(o)}`;
           waits.push(sendAlert("paid", o, v, `${base}/r/${token}`));
           return out(200, { order: o, token, verifyUrl: v, message: orderText(o, v) });
+        }
+        if (p === "/api/doc") {
+          const code = String(b.code || "").replace(/[^0-9A-Za-z]/g, "");
+          need(okOwner(code, b.k), "Please open this page from the link in your email.");
+          need(openShort(code), "This order link is not valid.");
+          const num = (v) => { const n = Math.max(0, Math.round(Number(v) * 100) / 100); return Number.isFinite(n) && n < 1e7 ? String(n) : "0"; };
+          const note = Buffer.from(str(b.n, 120)).toString("base64url");
+          const body = [b.kind === "r" ? "r" : "i", code, num(b.f), num(b.d), num(b.q), num(b.r), num(b.p), note].join("~");
+          return out(200, { ok: true, url: `${base}/d/${body}~${docSig(body)}` });
         }
         if (p === "/api/confirm") {
           const t = String(b.code || "").replace(/[^0-9A-Za-z._-]/g, "");
