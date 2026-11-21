@@ -361,7 +361,7 @@ function createApp(cfg) {
       confirmed: !!x.cf, reported: isE && x.pr ? x.pr.amt : 0, prKind: isE && x.pr ? x.pr.k : "", code
     };
     const pay = METHODS.map((m) => `<tr><td>${esc(m.name)}${m.kind === "bank" ? " · " + esc(m.bank) : ""}</td><td><b>${esc(m.number)}</b></td><td>${esc(m.accountName)}</td></tr>`).join("");
-    const when = isE ? `${esc(x.ty)} · ${esc(niceDate(x.d))}` : `${esc(x.c.f)} · ${esc(niceDate(x.c.d))}, ${esc(x.c.tm)}`;
+    const when = isE ? `${esc(x.ty)} · ${esc(niceDate(x.d))}` : `${esc(x.c.f)} · ${esc(niceDate(x.c.d))}, ${esc(x.c.tm === PENDING ? "time to be confirmed" : x.c.tm)}`;
     const where = isE ? (x.v ? esc(x.v) : "Venue to be shared") : (x.c.f === "Delivery" ? esc(x.c.a || "Address to be confirmed") : "Pick-up");
     const menu = isE && (x.pi || []).length ? `<h3>Menu choices</h3><ul class="menu">${x.pi.map((p) => `<li><b>${esc(p[0])}:</b> ${esc(p[1].length ? p[1].join(", ") : "to be suggested")}</li>`).join("")}<li><b>Bar set-up</b></li></ul>` : "";
     const terms = R && isE
@@ -393,7 +393,10 @@ table.items td{padding:9px 6px;border-bottom:1px solid #f0e4d2;vertical-align:to
 .box{margin-top:18px}.note{background:#fbf3e6;border-radius:10px;padding:10px 12px;font-size:.88rem;white-space:pre-wrap}.terms{font-size:.8rem;color:#6f5547;margin-top:18px}
 .stamp{display:inline-block;border:2px solid #2f7d4a;color:#2f7d4a;font-weight:800;padding:2px 10px;border-radius:6px;font-size:.85rem;margin-top:6px}
 @media (max-width:600px){.sheet{padding:20px 16px}.top,.cols{grid-template-columns:1fr;display:grid}.inv{text-align:left}.tools .row{grid-template-columns:1fr}}
-@media print{body{background:#fff}.tools{display:none}.sheet{box-shadow:none;margin:0;max-width:none;padding:0}@page{margin:14mm}}
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:#3b1f14;padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:flex;gap:8px;box-shadow:0 -4px 16px rgba(0,0,0,.2)}
+.bar a,.bar button{flex:1;font:800 .95rem system-ui;padding:13px 10px;border-radius:999px;border:0;text-align:center;text-decoration:none;color:#fff;cursor:pointer}
+.bar .wa{background:#1fa855}.bar .pdfb{background:#a8174f}body{padding-bottom:84px}
+@media print{body{background:#fff;padding-bottom:0}.bar{display:none}.tools{display:none}.sheet{box-shadow:none;margin:0;max-width:none;padding:0}@page{margin:14mm}}
 </style>
 <script src="${esc(site)}/assets/vendor/html2pdf.bundle.min.js" defer></script>
 </head><body>
@@ -429,6 +432,7 @@ table.items td{padding:9px 6px;border-bottom:1px solid #f0e4d2;vertical-align:to
   ${R ? `<div class="box"><h3>Payment received</h3><table class="pay"><tr><td>Method</td><td><b>${esc(data.method)}</b></td></tr><tr><td>Reference</td><td><b>${esc(x.ref)}</b></td></tr><tr><td>Paid to</td><td>${esc(METHODS[0].accountName)}</td></tr></table></div><p style="margin-top:14px;font-weight:700;color:#3b1f14">${isE ? "Thank you for booking with us!" : "Thank you for your order!"}</p>` : `<div class="box"><h3>How to pay · use reference <b style="color:#a8174f">${esc(x.ref)}</b></h3><table class="pay">${pay}</table></div>`}
   <p class="terms">${esc(terms)}</p>
 </div>
+<div class="bar"><button class="pdfb" type="button" id="pdf2">⬇ PDF</button><a class="wa" id="wa2" target="_blank" rel="noopener">Send ${R ? "receipt" : "invoice"} to customer</a></div>
 <script>
 const D=${JSON.stringify(data).replace(/</g, "\\u003c")};
 const $=(i)=>document.getElementById(i), fmt=(n)=>"GH₵"+Number(n).toLocaleString("en-US",{maximumFractionDigits:2});
@@ -455,13 +459,13 @@ function draw(){
   const ph="233"+String(D.phone).replace(/^0/,"");
   const due=D.isE?Math.round(tot*D.pct)/100:tot, link=D.site+"/pay.html?ref="+encodeURIComponent(D.payRef)+"&amt="+due+(D.isE?"&for=deposit&full="+tot+(D.code?"&t="+encodeURIComponent(D.code):""):"");
   const msg=(D.receipt&&D.isE) ? "Hello "+D.name.split(" ")[0]+", thank you! Here is your receipt for booking "+D.ref+" from "+D.biz+".\\nAmount received: "+fmt(D._paid)+" by "+D.method+".\\nBalance remaining: "+fmt(D._bal)+(D._bal>0?" (due "+D.balDue+")":"")+"\\n\\nThank you for booking with us!" : D.receipt ? "Hello "+D.name.split(" ")[0]+", thank you! Here is your receipt for order "+D.ref+" from "+D.biz+".\\nAmount paid: "+fmt(tot)+" by "+D.method+".\\nPaid on: "+D.paidOn+"\\n\\nWe'll be in touch about your "+(D.delivery?"delivery":"pick-up")+". Thank you for choosing us!" : "Hello "+D.name.split(" ")[0]+", here is your invoice "+D.ref+" from "+D.biz+".\\nTotal: "+fmt(tot)+(D.isE?"\\n"+D.pct+"% deposit to book: "+fmt(due)+"\\nBalance due: "+D.balDue:"")+"\\n\\nReference:\\n"+D.payRef+"\\n\\nTap to copy the reference and payment numbers:\\n"+link+"\\n\\nThank you!";
-  $("wa").href="https://wa.me/"+ph+"?text="+encodeURIComponent(msg);
+  $("wa").href="https://wa.me/"+ph+"?text="+encodeURIComponent(msg); $("wa2").href=$("wa").href;
   try{localStorage.setItem(key,JSON.stringify({recv:$("recv")?$("recv").value:"",prev:$("prev")?$("prev").value:"",fee:$("fee").value,disc:$("disc").value,quote:$("quote")?$("quote").value:"",noteIn:$("noteIn").value}))}catch(e){}
 }
 document.querySelectorAll(".tools input,.tools textarea").forEach(i=>["input","change","keyup","blur"].forEach(ev=>i.addEventListener(ev,draw)));
 ["pageshow","load","focus"].forEach(ev=>window.addEventListener(ev,draw));
 window.addEventListener("beforeprint",draw);
-$("wa").addEventListener("click",draw);            // runs before the link opens, so the message is always current
+$("wa").addEventListener("click",draw); $("wa2").addEventListener("click",draw); $("pdf2").addEventListener("click",()=>$("pdf").click());            // runs before the link opens, so the message is always current
 $("print").addEventListener("click",()=>{draw();window.print()});
 $("pdf").addEventListener("click",async()=>{
   draw(); const btn=$("pdf"), old=btn.textContent; btn.disabled=true; btn.textContent="Making PDF…";
@@ -505,6 +509,7 @@ draw(); setTimeout(draw,300);
     let subject, title, color;
     if (kind === "order") { subject = `🟡 New order ${x.ref} · ${money(x.tot)} · awaiting payment`; title = `New order ${x.ref}: awaiting payment`; color = "#c27a12"; }
     else if (kind === "paid") { subject = `🟢 Payment reported ${x.ref} · ${money(x.tot)} · ${method(x.pm).name}${x.py.txn ? " · TXN " + x.py.txn : ""} · ${x.c.tm}`; title = `Customer reported payment for ${x.ref}. Check your ${method(x.pm).name} SMS.`; color = "#2f7d4a"; }
+    else if (kind === "confirmed") { const amt = x.t === "e" ? x.pr.amt : x.tot; subject = `✅ Payment confirmed ${x.ref} · ${money(amt)}`; title = `You confirmed ${money(amt)} received for ${x.ref}.`; color = "#2f7d4a"; }
     else if (kind === "eventpaid") { const k = { deposit: "Deposit", full: "Full payment", other: "Payment" }[x.pr.k] || "Payment"; subject = `🟢 ${k} reported ${x.ref} · ${money(x.pr.amt)} · ${method(x.pr.pm).name} · ${x.ty} ${niceDate(x.d)}`; title = `${k} of ${money(x.pr.amt)} reported for ${x.ref}. Check your ${method(x.pr.pm).name} SMS.`; color = "#2f7d4a"; }
     else { subject = `🎉 Event enquiry ${x.ref} · ${x.ty} · ${niceDate(x.d)}`; title = `New event enquiry ${x.ref}`; color = "#a8174f"; }
     const ctrl = new AbortController(); setTimeout(() => ctrl.abort(), 20000);
@@ -591,7 +596,9 @@ draw(); setTimeout(draw,300);
           } else {
             y = { ...x, py: x.py || { txn: "", from: "", s: "", at: new Date().toISOString() }, cf: 1 };
           }
-          return out(200, { ok: true, receipt: `${base}/r/${seal(y)}` });
+          const rUrl = `${base}/r/${seal(y)}`;
+          waits.push(sendAlert("confirmed", y, `${base}/v/${t}`, rUrl));
+          return out(200, { ok: true, receipt: rUrl });
         }
         if (p === "/api/event-paid") {
           const t = String(b.t || "").replace(/[^0-9A-Za-z._-]/g, "");
