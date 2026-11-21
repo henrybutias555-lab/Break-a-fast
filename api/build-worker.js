@@ -33,7 +33,7 @@ export default {
     if (!app) {
       if (!env.SIGNING_SECRET || env.SIGNING_SECRET.length < 32) return new Response("Server not configured", { status: 500 });
       app = createApp({
-        SECRET: env.SIGNING_SECRET, ALERT_URL: env.ALERT_URL || "", ALERT_KEY: env.ALERT_KEY || "",
+        SECRET: env.SIGNING_SECRET, ALERT_URL: env.ALERT_URL || "", ALERT_KEY: env.ALERT_KEY || "", OWNER_PIN: env.OWNER_PIN || "",
         ALLOWED_ORIGINS: (env.ALLOWED_ORIGINS || "https://break-a-fast.onrender.com").split(",").map((s) => s.trim()),
         W, crypto, Buffer, LOGOS
       });

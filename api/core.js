@@ -2,7 +2,8 @@
    createApp(cfg) -> { handle(req) }. No platform APIs here: crypto/Buffer are passed in. */
 function createApp(cfg) {
   const { SECRET, ALERT_URL, ALERT_KEY, ALLOWED_ORIGINS, W, crypto, Buffer } = cfg;
-  const LOGOS = cfg.LOGOS || {};          // data: URIs for the invoice (no cross-site image loading)
+  const LOGOS = cfg.LOGOS || {};
+  const OWNER_PIN = String(cfg.OWNER_PIN || "");  // lets the owner confirm payments from the verify page          // data: URIs for the invoice (no cross-site image loading)
   const C = W.BAF_CONFIG, PRODUCTS = W.BAF_PRODUCTS, GROUPS = W.BAF_EVENT_GROUPS;
   const METHODS = C.paymentMethods;
   const method = (id) => METHODS.find((m) => m.id === id);
@@ -271,7 +272,21 @@ function createApp(cfg) {
         ${x.py ? row("Payment", "Customer says they have paid") + (x.py.txn ? row("Customer's Transaction ID", esc(x.py.txn)) : "") + (x.py.from ? row("Paid from", esc(x.py.from + (x.py.s ? " (" + x.py.s + ")" : ""))) : "") : row("Payment", "Not reported yet")}
         </table>
         <div class="todo"><b>Before you start this order:</b> check your ${esc(m ? m.name : "")} SMS/statement shows <b>${money(x.tot)}</b> received${x.py && x.py.txn ? ` with Transaction ID <b>${esc(x.py.txn)}</b>` : ""} and reference <b>${esc(x.ref)}</b>. The website cannot see your account, so only your own SMS/statement proves the money arrived.</div>
-        <p><a class="inv" href="../i/${esc(codeForInvoice)}">📄 Open invoice</a></p>`;
+        <p><a class="inv" href="../i/${esc(codeForInvoice)}">📄 Open invoice</a></p>
+        ${OWNER_PIN ? `<details class="owner"><summary>Owner: confirm payment</summary>
+          <form id="cf" autocomplete="off">
+            <p style="margin:6px 0 10px;font-size:.9rem">First check your MoMo/bank SMS shows the money with reference <b>${esc(x.ref)}</b>.</p>
+            ${x.t === "e" ? `<label>Amount received (GH₵)<input name="amt" type="number" min="1" step="1" inputmode="decimal" value="${esc(x.pr ? x.pr.amt : x.dep || "")}"></label>
+            <label>Paid with<select name="pm">${METHODS.map((m) => `<option value="${esc(m.id)}"${m.id === x.pm ? " selected" : ""}>${esc(m.name)}</option>`).join("")}</select></label>` : ""}
+            <label>Owner PIN<input name="pin" type="password" inputmode="numeric" required></label>
+            <button type="submit">✅ Yes, I've received the payment</button>
+            <div id="cf-msg"></div>
+          </form></details>
+          <script>
+          document.getElementById("cf").addEventListener("submit",async(e)=>{e.preventDefault();const f=e.target,m=document.getElementById("cf-msg");m.textContent="Checking…";
+            try{const r=await fetch("/api/confirm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:${JSON.stringify(codeForInvoice)},pin:f.pin.value,amt:f.amt?f.amt.value:"",pm:f.pm?f.pm.value:""})});
+            const j=await r.json();if(!r.ok)throw new Error(j.error||"Could not confirm");location.href=j.receipt;}catch(err){m.textContent=err.message;}});
+          </script>` : ""}`;
     } else {
       const m = method(x.pm);
       body = `<div class="ok">✔ GENUINE EVENT ENQUIRY</div><p class="sub">Created by the website on ${esc(new Date(x.at).toLocaleString("en-GB", { timeZone: "UTC" }))} GMT</p>
@@ -284,7 +299,21 @@ function createApp(cfg) {
         ${row("Preferred payment", esc(m ? m.name : x.pm))}
         </table>
         <div class="todo">When the token arrives, check your SMS/statement shows the right amount with reference <b>${esc(x.ref)}</b>.</div>
-        <p><a class="inv" href="../i/${esc(codeForInvoice)}">📄 Open invoice</a></p>`;
+        <p><a class="inv" href="../i/${esc(codeForInvoice)}">📄 Open invoice</a></p>
+        ${OWNER_PIN ? `<details class="owner"><summary>Owner: confirm payment</summary>
+          <form id="cf" autocomplete="off">
+            <p style="margin:6px 0 10px;font-size:.9rem">First check your MoMo/bank SMS shows the money with reference <b>${esc(x.ref)}</b>.</p>
+            ${x.t === "e" ? `<label>Amount received (GH₵)<input name="amt" type="number" min="1" step="1" inputmode="decimal" value="${esc(x.pr ? x.pr.amt : x.dep || "")}"></label>
+            <label>Paid with<select name="pm">${METHODS.map((m) => `<option value="${esc(m.id)}"${m.id === x.pm ? " selected" : ""}>${esc(m.name)}</option>`).join("")}</select></label>` : ""}
+            <label>Owner PIN<input name="pin" type="password" inputmode="numeric" required></label>
+            <button type="submit">✅ Yes, I've received the payment</button>
+            <div id="cf-msg"></div>
+          </form></details>
+          <script>
+          document.getElementById("cf").addEventListener("submit",async(e)=>{e.preventDefault();const f=e.target,m=document.getElementById("cf-msg");m.textContent="Checking…";
+            try{const r=await fetch("/api/confirm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:${JSON.stringify(codeForInvoice)},pin:f.pin.value,amt:f.amt?f.amt.value:"",pm:f.pm?f.pm.value:""})});
+            const j=await r.json();if(!r.ok)throw new Error(j.error||"Could not confirm");location.href=j.receipt;}catch(err){m.textContent=err.message;}});
+          </script>` : ""}`;
     }
     return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
   <title>Verify order | Break-a-Fast</title>
@@ -297,7 +326,10 @@ function createApp(cfg) {
   .ok,.bad{font-weight:800;font-size:1.4rem;padding:16px;border-radius:14px;text-align:center;color:#fff}.ok{background:#2f7d4a}.bad{background:#c0392b}
   .sub{color:#6f5547;font-size:.9rem;text-align:center}h2{margin:16px 0 8px;color:#3b1f14}
   table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden}th,td{text-align:left;padding:10px 12px;border-bottom:1px solid #e8d6bd;vertical-align:top}
-  th{color:#6f5547;font-weight:600;width:38%}th,td{overflow-wrap:anywhere}.item{font-weight:700;color:#3b1f14}.calc{color:#6f5547;margin-top:2px}.calc b{color:#2a1710}.big{font-size:1.2rem;color:#a8174f}.todo{margin-top:16px;background:#fff7e6;border:1px solid #f1d39a;border-radius:12px;padding:12px 14px}.inv{display:inline-block;margin-top:6px;background:#a8174f;color:#fff;padding:10px 16px;border-radius:999px;text-decoration:none;font-weight:700}
+  th{color:#6f5547;font-weight:600;width:38%}th,td{overflow-wrap:anywhere}.item{font-weight:700;color:#3b1f14}.calc{color:#6f5547;margin-top:2px}.calc b{color:#2a1710}.big{font-size:1.2rem;color:#a8174f}.todo{margin-top:16px;background:#fff7e6;border:1px solid #f1d39a;border-radius:12px;padding:12px 14px}.owner{margin-top:18px;background:#fff;border:1px solid #e8d6bd;border-radius:12px;padding:12px 14px}.owner summary{font-weight:800;color:#3b1f14;cursor:pointer}
+  .owner label{display:grid;gap:4px;font-size:.85rem;font-weight:700;color:#6f5547;margin-bottom:10px}.owner input,.owner select{font:inherit;padding:10px;border:2px solid #e8d6bd;border-radius:10px}
+  .owner button{font:700 1rem system-ui;padding:12px 16px;border:0;border-radius:999px;background:#2f7d4a;color:#fff;width:100%;cursor:pointer}#cf-msg{margin-top:8px;font-weight:700;color:#c0392b}
+  .inv{display:inline-block;margin-top:6px;background:#a8174f;color:#fff;padding:10px 16px;border-radius:999px;text-decoration:none;font-weight:700}
   </style></head><body><main><h1>Break-a-Fast · Order verification</h1>${body}</main></body></html>`;
   }
 
@@ -326,7 +358,7 @@ function createApp(cfg) {
       biz: C.businessName, payRef: x.ref, site, receipt: R, doc: DOC,
       method: R ? method((isE && x.pr ? x.pr.pm : x.pm) || x.pm).name : (!isE ? method(x.pm).name : ""),
       paidOn: R && x.py && x.py.at ? niceDate(x.py.at.slice(0, 10)) : R && x.pr && x.pr.at ? niceDate(x.pr.at.slice(0, 10)) : niceDate(today),
-      reported: isE && x.pr ? x.pr.amt : 0, prKind: isE && x.pr ? x.pr.k : "", code
+      confirmed: !!x.cf, reported: isE && x.pr ? x.pr.amt : 0, prKind: isE && x.pr ? x.pr.k : "", code
     };
     const pay = METHODS.map((m) => `<tr><td>${esc(m.name)}${m.kind === "bank" ? " · " + esc(m.bank) : ""}</td><td><b>${esc(m.number)}</b></td><td>${esc(m.accountName)}</td></tr>`).join("");
     const when = isE ? `${esc(x.ty)} · ${esc(niceDate(x.d))}` : `${esc(x.c.f)} · ${esc(niceDate(x.c.d))}, ${esc(x.c.tm)}`;
@@ -367,7 +399,8 @@ table.items td{padding:9px 6px;border-bottom:1px solid #f0e4d2;vertical-align:to
 </head><body>
 <div class="tools">
   <h2>Prepare ${DOC.toLowerCase()} ${esc(x.ref)}</h2>
-  ${R ? `<div style="background:#fff7e6;border:1px solid #f1d39a;border-radius:10px;padding:8px 10px;font-size:.85rem"><b>Before sending:</b> check your ${esc(data.method)} SMS shows the money with reference <b>${esc(x.ref)}</b>. Only send a receipt once the payment has arrived.</div>` : ""}
+  ${R && x.cf ? `<div style="background:#ecf7ef;border:1px solid #b7dfc3;border-radius:10px;padding:8px 10px;font-size:.85rem;color:#2f7d4a"><b>✅ Payment confirmed by you.</b> Download the PDF and send it to the customer.</div>` : ""}
+  ${R && !x.cf ? `<div style="background:#fff7e6;border:1px solid #f1d39a;border-radius:10px;padding:8px 10px;font-size:.85rem"><b>Before sending:</b> check your ${esc(data.method)} SMS shows the money with reference <b>${esc(x.ref)}</b>. Only send a receipt once the payment has arrived.</div>` : ""}
   <div class="row">
     <label>${isE ? "Transport (GH₵)" : data.delivery ? "Delivery fee (GH₵)" : "Extra charge (GH₵)"}<input id="fee" autocomplete="off" type="number" min="0" step="1" inputmode="decimal" placeholder="0"></label>
     <label>Discount (GH₵)<input id="disc" autocomplete="off" type="number" min="0" step="1" inputmode="decimal" placeholder="0"></label>
@@ -383,7 +416,7 @@ table.items td{padding:9px 6px;border-bottom:1px solid #f0e4d2;vertical-align:to
   <img class="wm" src="${LOGOS.watermark || esc(site) + "/assets/img/logo-watermark.jpg"}" alt="">
   <div class="top">
     <div class="brand"><img src="${LOGOS.header || esc(site) + "/assets/img/logo-invoice.jpg"}" alt=""><div><b>${esc(C.businessName)}</b><span>${esc(C.tagline)}<br>${esc(C.phone)} / ${esc(C.altPhone)}</span></div></div>
-    <div class="inv"><h1>${DOC.toUpperCase()}</h1><div>${R ? (isE ? "For booking" : "For order") : "No."} <b>${esc(x.ref)}</b></div><div>${R ? "Paid on" : "Date"}: ${esc(R ? data.paidOn : niceDate(today))}</div>${R ? `<div class="stamp" id="stamp">PAID</div>` : ""}</div>
+    <div class="inv"><h1>${DOC.toUpperCase()}</h1><div>${R ? (isE ? "For booking" : "For order") : "No."} <b>${esc(x.ref)}</b></div><div>${R ? "Paid on" : "Date"}: ${esc(R ? data.paidOn : niceDate(today))}</div>${R ? `<div class="stamp" id="stamp">${x.cf ? "PAYMENT CONFIRMED" : "PAID"}</div>` : ""}</div>
   </div>
   <div class="cols">
     <div><h3>Bill to</h3><b>${esc(name)}</b><br>${esc(phone)}<br>${where}</div>
@@ -412,7 +445,7 @@ function draw(){
   let h="<div><span>Subtotal</span><span>"+fmt(sub)+"</span></div>"+(disc?"<div><span>Discount</span><span>−"+fmt(disc)+"</span></div>":"")+"<div class=tot><span>Total</span><span>"+fmt(tot)+"</span></div>";
   if(D.isE&&D.receipt){const recv=+($("recv").value||0), prev=+($("prev").value||0), paid=recv+prev, bal=Math.max(0,tot-paid);
     h+="<div class=dep><span>Amount received</span><span>"+fmt(recv)+"</span></div>"+(prev?"<div><span>Paid earlier</span><span>"+fmt(prev)+"</span></div>":"")+"<div><span>Total paid</span><span>"+fmt(paid)+"</span></div><div><span>Balance remaining</span><span>"+fmt(bal)+"</span></div>"+(bal>0?"<div><span>Balance due</span><span>"+e(D.balDue)+"</span></div>":"");
-    if($("stamp")) $("stamp").textContent = bal<=0 ? "PAID IN FULL" : (paid>=Math.round(tot*D.pct)/100 ? "DEPOSIT PAID" : "PART PAYMENT");
+    if($("stamp")) $("stamp").textContent = (bal<=0 ? "PAID IN FULL" : (paid>=Math.round(tot*D.pct)/100 ? "DEPOSIT PAID" : "PART PAYMENT")) + (D.confirmed ? " ✓" : "");
     D._paid=recv; D._bal=bal; D._total=paid;}
   else if(D.isE){const dep=Math.round(tot*D.pct)/100; h+="<div class=dep><span>"+D.pct+"% deposit to book</span><span>"+fmt(dep)+"</span></div><div><span>Balance</span><span>"+fmt(tot-dep)+"</span></div><div><span>Balance due</span><span>"+e(D.balDue)+"</span></div>"; if(!fee) h+="<div style='font-size:.8rem;color:#6f5547'><span>Transport to be added</span></div>";}
   else if(D.receipt) h+="<div class=dep><span>Amount paid</span><span>"+fmt(tot)+"</span></div><div><span>Paid by</span><span>"+e(D.method)+"</span></div><div><span>Balance</span><span>"+fmt(0)+"</span></div>";
@@ -540,6 +573,25 @@ draw(); setTimeout(draw,300);
           const token = seal(o), v = `${base}/v/${shortCode(o)}`;
           waits.push(sendAlert("paid", o, v, `${base}/r/${token}`));
           return out(200, { order: o, token, verifyUrl: v, message: orderText(o, v) });
+        }
+        if (p === "/api/confirm") {
+          need(OWNER_PIN, "Owner confirmation is not set up.");
+          const key = "pin:" + (req.ip || "?"), now = Date.now(), tries = (hits.get(key) || []).filter((t) => now - t < 15 * 60 * 1000);
+          need(tries.length < 6, "Too many PIN attempts. Please wait 15 minutes.");
+          const a = Buffer.from(String(b.pin || "")), g = Buffer.from(OWNER_PIN);
+          if (!(a.length === g.length && crypto.timingSafeEqual(a, g))) { tries.push(now); hits.set(key, tries); throw new Bad("Wrong PIN."); }
+          const t = String(b.code || "").replace(/[^0-9A-Za-z._-]/g, "");
+          const x = t.includes(".") ? open(t) : openShort(t);
+          need(x, "This order link is not valid.");
+          let y;
+          if (x.t === "e") {
+            const amt = Math.round(Number(b.amt) * 100) / 100;
+            need(amt > 0 && amt <= 1000000, "Please enter the amount received.");
+            y = { ...x, pr: { amt, k: "other", pm: method(b.pm) ? b.pm : x.pm, at: new Date().toISOString() }, cf: 1 };
+          } else {
+            y = { ...x, py: x.py || { txn: "", from: "", s: "", at: new Date().toISOString() }, cf: 1 };
+          }
+          return out(200, { ok: true, receipt: `${base}/r/${seal(y)}` });
         }
         if (p === "/api/event-paid") {
           const t = String(b.t || "").replace(/[^0-9A-Za-z._-]/g, "");

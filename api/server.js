@@ -19,6 +19,7 @@ const app = createApp({
   SECRET,
   ALERT_URL: process.env.ALERT_URL || "",
   ALERT_KEY: process.env.ALERT_KEY || "",
+  OWNER_PIN: process.env.OWNER_PIN || "",
   ALLOWED_ORIGINS: (process.env.ALLOWED_ORIGINS || "https://break-a-fast.onrender.com").split(",").map((s) => s.trim()),
   W: sandbox.window, crypto, Buffer,
   LOGOS: Object.fromEntries([["header", "logo-invoice.jpg"], ["watermark", "logo-watermark.jpg"]].map(([k, f]) => {
