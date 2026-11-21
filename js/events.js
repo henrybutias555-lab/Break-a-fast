@@ -158,7 +158,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
     let first = null;
     Object.entries(checks).forEach(([k, ok]) => { f[k].closest(".field").classList.toggle("invalid", !ok); if (!ok && !first) first = f[k]; });
-    if (first) return first.focus();
+    if (first) return BAF.focusField(first);
 
     const btn = $("button[type=submit]", f), label = btn.textContent;
     btn.disabled = true; btn.textContent = "Preparing your enquiry…";

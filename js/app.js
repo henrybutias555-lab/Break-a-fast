@@ -359,8 +359,17 @@
     sync();
   }
 
+  // Bring a field with an error into view and put the cursor in its first visible control
+  // (works for hidden inputs such as the Day/Month/Year date picker).
+  function focusField(el) {
+    const field = el.closest(".field") || el;
+    field.scrollIntoView({ block: "center", behavior: "smooth" });
+    const ctl = [...field.querySelectorAll("input, select, textarea")].find((c) => c.type !== "hidden" && c.offsetParent !== null);
+    if (ctl) setTimeout(() => ctl.focus({ preventScroll: true }), 350);
+  }
+
   /* ---------- public API ---------- */
-  window.BAF = { $, $$, esc, money, store, waLink, telLink, Cart, productCard, productMedia, bindProductOpeners, openProduct, toast, copyText, api, wake, jumpToHash, dayMonthYear, config: C, products: P };
+  window.BAF = { $, $$, esc, money, store, waLink, telLink, Cart, productCard, productMedia, bindProductOpeners, openProduct, toast, copyText, api, wake, jumpToHash, dayMonthYear, focusField, config: C, products: P };
 
   document.addEventListener("DOMContentLoaded", () => {
     renderLayout();

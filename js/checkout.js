@@ -140,7 +140,7 @@ document.addEventListener("DOMContentLoaded", () => {
       f.classList.toggle("invalid", !ok);
       if (!ok && !first) first = form[k];
     });
-    if (first) first.focus();
+    if (first) BAF.focusField(first);
     return !first;
   }
   $$("input, textarea", form).forEach((el) => el.addEventListener("input", () => el.closest(".field")?.classList.remove("invalid")));
