@@ -378,6 +378,7 @@ function createApp(cfg) {
 .tools h2{margin:0;font-size:1rem;color:#3b1f14}.tools .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .tools label{font-size:.85rem;font-weight:700;color:#6f5547;display:grid;gap:4px}
 .tools input,.tools textarea{font:inherit;padding:10px;border:2px solid #e8d6bd;border-radius:10px;width:100%}
+.req .rq{display:none;color:#c0392b;font-size:.8rem}.req.bad input{border-color:#c0392b;background:#fff5f5}.req.bad .rq{display:block}
 .btns{display:flex;flex-wrap:wrap;gap:8px}.btns button,.btns a{font:700 .95rem system-ui;padding:11px 16px;border-radius:999px;border:0;cursor:pointer;text-decoration:none;color:#fff;background:#3b1f14}.btns .wa{background:#1fa855}
 .sheet{position:relative;max-width:820px;margin:16px auto 40px;background:#fff;padding:36px 40px;border-radius:6px;box-shadow:0 6px 24px rgba(0,0,0,.08);overflow:hidden}
 .sheet>*{position:relative;z-index:1}.sheet .wm{position:absolute;z-index:0;left:50%;top:50%;width:62%;max-width:460px;transform:translate(-50%,-50%);opacity:.07;pointer-events:none;border-radius:50%;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -408,8 +409,8 @@ body.pdfmode .top,body.pdfmode .cols{display:flex}body.pdfmode .cols{display:gri
   ${R && x.cf ? `<div style="background:#ecf7ef;border:1px solid #b7dfc3;border-radius:10px;padding:8px 10px;font-size:.85rem;color:#2f7d4a"><b>✅ Payment confirmed by you.</b> Download the PDF and send it to the customer.</div>` : ""}
   ${R && !x.cf ? `<div style="background:#fff7e6;border:1px solid #f1d39a;border-radius:10px;padding:8px 10px;font-size:.85rem"><b>Before sending:</b> check your ${esc(data.method)} SMS shows the money with reference <b>${esc(x.ref)}</b>. Only send a receipt once the payment has arrived.</div>` : ""}
   <div class="row">
-    <label>${isE ? "Transport (GH₵)" : data.delivery ? "Delivery fee (GH₵)" : "Extra charge (GH₵)"}<input id="fee" autocomplete="off" type="number" min="0" step="1" inputmode="decimal" placeholder="0"></label>
-    <label>Discount (GH₵)<input id="disc" autocomplete="off" type="number" min="0" step="1" inputmode="decimal" placeholder="0"></label>
+    <label class="req">${isE ? "Transport (GH₵)" : data.delivery ? "Delivery fee (GH₵)" : "Extra charge (GH₵)"} *<input id="fee" autocomplete="off" type="number" min="0" step="1" inputmode="decimal" placeholder="Required: type 0 if none" required><span class="rq">Required: enter an amount, or 0 if none.</span></label>
+    <label class="req">Discount (GH₵) *<input id="disc" autocomplete="off" type="number" min="0" step="1" inputmode="decimal" placeholder="Required: type 0 if none" required><span class="rq">Required: enter an amount, or 0 if none.</span></label>
   </div>
   ${R && isE ? `<label>Amount received now (GH₵)<input id="recv" autocomplete="off" type="number" min="0" step="1" inputmode="decimal" value="${esc(x.pr.amt)}"></label>
   <label>Paid earlier (GH₵)<input id="prev" autocomplete="off" type="number" min="0" step="1" inputmode="decimal" placeholder="0"></label>` : ""}
@@ -468,8 +469,15 @@ function draw(){
 document.querySelectorAll(".tools input,.tools textarea").forEach(i=>["input","change","keyup","blur"].forEach(ev=>i.addEventListener(ev,draw)));
 ["pageshow","load","focus"].forEach(ev=>window.addEventListener(ev,draw));
 window.addEventListener("beforeprint",draw);
-$("wa").addEventListener("click",draw); $("wa2").addEventListener("click",draw); $("pdf2").addEventListener("click",()=>$("pdf").click());            // runs before the link opens, so the message is always current
-$("print").addEventListener("click",()=>{draw();window.print()});
+$("wa").addEventListener("click",(e)=>{ if(!ready()){e.preventDefault();return;} draw(); }); $("wa2").addEventListener("click",draw); $("pdf2").addEventListener("click",()=>$("pdf").click());            // runs before the link opens, so the message is always current
+$("print").addEventListener("click",()=>{ if(!ready()) return; draw();window.print()});
+function ready(){
+  const miss=["fee","disc"].map(id=>$(id)).filter(i=>i.value.trim()===""||Number(i.value)<0);
+  ["fee","disc"].forEach(id=>$(id).closest("label").classList.toggle("bad",miss.includes($(id))));
+  if(miss.length){ window.scrollTo({top:0,behavior:"smooth"}); setTimeout(()=>miss[0].focus(),300); $("tip").textContent="Please fill in the delivery/transport fee and the discount first (type 0 if none)."; return false; }
+  return true;
+}
+["fee","disc"].forEach(id=>$(id).addEventListener("input",()=>{ if($(id).value.trim()!=="") $(id).closest("label").classList.remove("bad"); }));
 async function makePdf(kind){
   draw(); if(!window.html2pdf) throw new Error("PDF tool not loaded");
   const sheet=document.querySelector(".sheet"), y=window.scrollY;
@@ -489,12 +497,14 @@ async function makePdf(kind){
 }
 function busy(btn,txt){const old=btn.textContent;btn.disabled=true;btn.textContent=txt;return()=>{btn.disabled=false;btn.textContent=old;};}
 $("pdf").addEventListener("click",async()=>{
+  if(!ready()) return;
   const done=busy($("pdf"),"Making PDF…");
   try{ await makePdf("save"); $("tip").textContent="PDF downloaded ("+D.doc+"-"+D.ref+".pdf)."; }
   catch(e){ window.print(); }
   done();
 });
 async function sharePdf(btn){
+  if(!ready()) return;
   const done=busy(btn,"Preparing…");
   try{
     const blob=await makePdf("blob");
