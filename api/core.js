@@ -226,6 +226,8 @@ function createApp(cfg) {
   const pickLine = (p) => p[2] ? `${p[0]}: ${p[1].join(", ")}` : `${p[0]} (${p[1].length} of ${p[3]}): ${p[1].length ? p[1].join(", ") : "not chosen yet, please suggest"}${p[1].length && p[1].length < p[3] ? " + please suggest the rest" : ""}`;
 
   /* ---------- WhatsApp text (built server-side; the Verify link is what counts) ---------- */
+  // Customer-facing WhatsApp text no longer carries the verify link (owner gets it by email only).
+  const o_ref = (L) => (L[0].match(/(BAF|EVT)-[A-Z0-9]+/) || [""])[0];
   function verifyLine(url) {
     return [``, `🔒 Verify this order (tap):`, url, ``, `If anything in this message differs from the verify page, the verify page is correct.`];
   }
@@ -239,7 +241,7 @@ function createApp(cfg) {
     L.push(``, `*Payment: ${m.name}*`);
     if (o.py) { L.push(`Customer says they have sent ${money(o.tot)}`); if (o.py.txn) L.push(`Transaction ID: ${o.py.txn}`); if (o.py.from) L.push(`Paid from: ${o.py.from}${o.py.s ? " (" + o.py.s + ")" : ""}`); L.push(`Reference: ${o.ref}`); }
     else L.push(`Awaiting invoice with payment details.`);
-    return L.concat(verifyLine(url)).join("\n");
+    return L.concat([``, `Reference: ${o_ref(L)}`]).join("\n");
   }
   function eventText(e, url) {
     const m = method(e.pm);
@@ -250,7 +252,7 @@ function createApp(cfg) {
     L.push(``, `Name: ${e.n}`, `Phone: ${e.p}`);
     if (e.m) L.push(`Message: ${e.m}`);
     L.push(``, `Preferred payment: ${m.name}`, `Please confirm availability and send my invoice. I'll pay the token after your confirmation.`);
-    return L.concat(verifyLine(url)).join("\n");
+    return L.concat([``, `Reference: ${o_ref(L)}`]).join("\n");
   }
 
   /* ---------- verify page ---------- */

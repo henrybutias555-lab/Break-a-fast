@@ -177,7 +177,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <h2 id="h-done">Last step: send it to us</h2>
           <p>Tap the button to open WhatsApp with your order and payment details, then tap <b>Send</b>.</p>
           <a class="btn btn-wa btn-block" href="${url}" target="_blank" rel="noopener">Send on WhatsApp</a>
-          <p class="small muted" style="margin-top:10px">The message includes a secure verify link, so we can confirm your order details quickly.</p>
+          <p class="small muted" style="margin-top:10px">This sends your order details and reference to us on WhatsApp.</p>
           <h3 style="margin-top:22px">What happens next</h3>
           <ol class="timeline">
             <li><div><b>We verify your payment</b>We check our ${esc(m.name)} account for <b>${money(order.tot)}</b> with reference <code class="k">${esc(order.ref)}</code>.</div></li>
