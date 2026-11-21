@@ -146,6 +146,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   f.date.min = d.toISOString().slice(0, 10);
+  BAF.dayMonthYear(f.date);
   $$("input", f).forEach((el) => el.addEventListener("input", () => el.closest(".field")?.classList.remove("invalid")));
 
   f.addEventListener("submit", async (ev) => {

@@ -324,8 +324,42 @@
     window.addEventListener("load", go, { once: true });
   }
 
+  /* ---------- Day / Month / Year picker (Ghana order: DD MM YYYY) ----------
+     Turns <input type="date"> into a hidden ISO field + three dropdowns,
+     so every phone shows day first, whatever its region setting. */
+  const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  function dayMonthYear(input, yearsAhead = 2) {
+    if (input.dataset.dmy) return;
+    input.dataset.dmy = "1";
+    const pad = (n) => String(n).padStart(2, "0");
+    const start = input.min || new Date().toISOString().slice(0, 10);
+    const y0 = +start.slice(0, 4);
+    const box = document.createElement("div");
+    box.className = "dmy";
+    box.innerHTML = `
+      <select aria-label="Day" id="${input.id}-d">${Array.from({ length: 31 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join("")}</select>
+      <select aria-label="Month">${MONTHS.map((m, i) => `<option value="${i + 1}">${m}</option>`).join("")}</select>
+      <select aria-label="Year">${Array.from({ length: yearsAhead + 1 }, (_, i) => `<option>${y0 + i}</option>`).join("")}</select>`;
+    input.type = "hidden";
+    input.after(box);
+    const lab = document.querySelector(`label[for="${input.id}"]`);
+    if (lab) lab.htmlFor = input.id + "-d";
+    const [d, m, y] = box.querySelectorAll("select");
+    const set = (iso) => { d.value = +iso.slice(8, 10); m.value = +iso.slice(5, 7); y.value = iso.slice(0, 4); };
+    set(input.value || start);
+    const sync = () => {
+      const last = new Date(Date.UTC(+y.value, +m.value, 0)).getUTCDate();
+      if (+d.value > last) d.value = last;
+      input.value = `${y.value}-${pad(m.value)}-${pad(d.value)}`;
+      box.closest(".field")?.classList.remove("invalid");
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    };
+    [d, m, y].forEach((s) => s.addEventListener("change", sync));
+    sync();
+  }
+
   /* ---------- public API ---------- */
-  window.BAF = { $, $$, esc, money, store, waLink, telLink, Cart, productCard, productMedia, bindProductOpeners, openProduct, toast, copyText, api, wake, jumpToHash, config: C, products: P };
+  window.BAF = { $, $$, esc, money, store, waLink, telLink, Cart, productCard, productMedia, bindProductOpeners, openProduct, toast, copyText, api, wake, jumpToHash, dayMonthYear, config: C, products: P };
 
   document.addEventListener("DOMContentLoaded", () => {
     renderLayout();

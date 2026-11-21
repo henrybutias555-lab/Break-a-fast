@@ -71,6 +71,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const today = new Date(); today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
   form.date.min = today.toISOString().slice(0, 10);
   if (!form.date.value) form.date.value = form.date.min;
+  BAF.dayMonthYear(form.date);
 
   // restore saved details (handy for repeat customers)
   const draft = store.get(DRAFT_KEY, null);
