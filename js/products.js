@@ -18,12 +18,12 @@ window.BAF_PRODUCTS = [
     short: "Handcrafted rolls finished with Strawberry, Oreo, Biscoff or Blueberry toppings.",
     description:
       "Our best-loved rolls, baked fresh and loaded with your favourite topping: juicy strawberry glaze, crushed Oreo and cream, Biscoff spread with cookie crumb, or rich blueberry compote. Perfect for sharing, gifting and celebrations.",
-    image: "assets/img/menu/roll-biscoff-new.jpg?v=1a4635e6",
+    image: "assets/img/menu/roll-biscoff-v2.jpg?v=44805854",
     gallery: [
-      "assets/img/roll-strawberry.jpg?v=d638dc77",
-      "assets/img/roll-oreo.jpg?v=8d7a02ac",
-      "assets/img/menu/roll-biscoff-new.jpg?v=1a4635e6",
-      "assets/img/roll-blueberry.jpg?v=a210d7b8"
+      "assets/img/menu/roll-strawberry-v2.jpg?v=fb588c19",
+      "assets/img/menu/roll-oreo-v2.jpg?v=02e803a2",
+      "assets/img/menu/roll-biscoff-v2.jpg?v=44805854",
+      "assets/img/menu/roll-blueberry-v2.jpg?v=adf205be"
     ],
     flavours: ["Strawberry", "Oreo", "Biscoff", "Blueberry"],
     options: [
