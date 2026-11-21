@@ -162,6 +162,8 @@ function createApp(cfg) {
     need(phone, "Please enter a valid Ghana phone number.");
     need(ful === "Pick-up" || address.length >= 5, "Please enter your delivery address.");
     need(validDate(c.date), "Please choose a valid date.");
+    const notice = (C.orderHours && C.orderHours.minNoticeDays) || 0;
+    need(c.date >= new Date(Date.now() + notice * 864e5).toISOString().slice(0, 10), `Orders need at least ${notice} days' notice. For urgent orders, please message us on WhatsApp.`);
     if (c.date === ghanaToday() || c.time !== PENDING) {
       need(HOURLY.some((t) => t.label === c.time), "Please choose a time.");
       need(slotOpen(c.date, c.time), "That time is not available for same-day orders. Please choose one of the times shown, or another day.");

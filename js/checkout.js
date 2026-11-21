@@ -69,7 +69,8 @@ document.addEventListener("DOMContentLoaded", () => {
   /* ---------- details ---------- */
   const isDelivery = () => (form.fulfilment ? form.fulfilment.value === "Delivery" : true);
   const today = new Date(); today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
-  form.date.min = today.toISOString().slice(0, 10);
+  const NOTICE = (C.orderHours && C.orderHours.minNoticeDays) || 0;
+  form.date.min = new Date(today.getTime() + NOTICE * 864e5).toISOString().slice(0, 10);
   if (!form.date.value) form.date.value = form.date.min;
   BAF.dayMonthYear(form.date);
 
@@ -89,7 +90,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!isToday) {                       // future order: pay first, then pick the time
       form.time.innerHTML = `<option value="${PENDING}">${PENDING}</option>`;
       timeField.hidden = true;
-      slotNote.textContent = (slotNote.textContent.startsWith("Today's") ? slotNote.textContent + " " : "") + "You'll choose your delivery time after payment.";
+      slotNote.innerHTML = (slotNote.textContent.startsWith("Today's") ? esc(slotNote.textContent) + " " : "") +
+        (NOTICE ? `Orders need at least ${NOTICE} days' notice. ` : "") + "You'll choose your delivery time after payment." +
+        (NOTICE ? ` <a href="${BAF.waLink("Hello Break-a-Fast! I have an urgent order. Can you do it sooner than " + NOTICE + " days?")}" target="_blank" rel="noopener">Urgent order? Ask on WhatsApp</a>` : "");
       timeField.after(slotNote);
       return;
     }

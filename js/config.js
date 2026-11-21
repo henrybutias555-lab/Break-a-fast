@@ -58,9 +58,10 @@ window.BAF_CONFIG = {
     : "", // e.g. "https://orders.break-a-fast.workers.dev" (Cloudflare, currently paused)
 
   // Order time slots (Ghana time). One-hour slots from "open" to "close".
-  // Same-day orders: the earliest slot is at least "sameDayLeadHours" after ordering,
-  // and only the next "sameDayMaxSlots" slots are offered.
-  orderHours: { open: 8, close: 19, sameDayLeadHours: 4, sameDayMaxSlots: 3 },
+  // minNoticeDays: earliest delivery date = today + this many days (3 = order 3 days ahead).
+  //   Set to 0 to allow same-day orders again; then the same-day rules apply:
+  //   earliest slot is "sameDayLeadHours" after ordering, and only "sameDayMaxSlots" are offered.
+  orderHours: { open: 8, close: 19, minNoticeDays: 3, sameDayLeadHours: 4, sameDayMaxSlots: 3 },
 
   // Events & catering bookings
   eventDepositPercent: 40,
