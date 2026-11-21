@@ -54,7 +54,12 @@ window.BAF_MENU_PHOTOS = {
   "Pancakes": "assets/img/menu/pancakes.jpg?v=792240b5",
   "Breakfast Sandwiches": "assets/img/menu/breakfast-sandwiches.jpg?v=c123533e",
   "Coffee Specials": "assets/img/menu/coffee-specials.jpg?v=906d476f",
-  "Tea & Bread": "assets/img/menu/tea-bread.jpg?v=25c960ba"
+  "Tea & Bread": "assets/img/menu/tea-bread.jpg?v=5b542d17",
+  "Coffee & Pastries": "assets/img/menu/coffee-pastries.jpg?v=77d371a5",
+  "Waakye": "assets/img/menu/waakye.jpg?v=6e7870a0",
+  "Hausa Koko": "assets/img/menu/hausa-koko.jpg?v=76a05aba",
+  "Rice Water": "assets/img/menu/rice-water.jpg?v=af7134a8",
+  "Porridge": "assets/img/menu/porridge.jpg?v=dd80a90e"
 };
 /* Same photo used for matching items on the Menu page */
 Object.assign(window.BAF_MENU_PHOTOS, {
@@ -62,7 +67,6 @@ Object.assign(window.BAF_MENU_PHOTOS, {
   "Meat Pies": window.BAF_MENU_PHOTOS["Meat Pie"],
   "Chicken Wings": window.BAF_MENU_PHOTOS["Spicy Chicken Wings"],
   "Dessert Cups": window.BAF_MENU_PHOTOS["Tigernut Pudding"],
-  "Beverages": window.BAF_MENU_PHOTOS["Sobolo"],
-  "Coffee & Pastries": window.BAF_MENU_PHOTOS["Coffee Specials"]
+  "Beverages": window.BAF_MENU_PHOTOS["Sobolo"]
 });
 window.BAF_PHOTO_CREDITS = [];

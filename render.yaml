@@ -16,6 +16,15 @@ services:
       - path: /assets/*
         name: Cache-Control
         value: public, max-age=604800
+      - path: /js/*
+        name: Cache-Control
+        value: no-cache
+      - path: /css/*
+        name: Cache-Control
+        value: no-cache
+      - path: /*.html
+        name: Cache-Control
+        value: no-cache
     routes:
       - type: rewrite
         source: /menu
