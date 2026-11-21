@@ -124,6 +124,13 @@ function createApp(cfg) {
 
   /* ---------- builders ---------- */
   const TIMES = ["Morning (8am to 12pm)", "Afternoon (12pm to 4pm)", "Evening (4pm to 7pm)"];
+  const SLOT_END = [12, 16, 19];          // hour each slot ends (Ghana time = GMT)
+  const PREP_HOURS = 1;                   // a slot closes this long before it ends
+  const slotOpen = (iso, i) => {
+    if (iso !== ghanaToday()) return true;
+    const now = new Date(); const h = now.getUTCHours() + now.getUTCMinutes() / 60;
+    return h <= SLOT_END[i] - PREP_HOURS;
+  };
   function buildOrder(b) {
     need(Array.isArray(b.items) && b.items.length >= 1 && b.items.length <= 30, "Your cart is empty.");
     const items = b.items.map((i) => {
@@ -145,6 +152,7 @@ function createApp(cfg) {
     need(ful === "Pick-up" || address.length >= 5, "Please enter your delivery address.");
     need(validDate(c.date), "Please choose a valid date.");
     need(TIMES.includes(c.time), "Please choose a time.");
+    need(slotOpen(c.date, TIMES.indexOf(c.time)), "That time has already passed for today. Please choose a later time or another day.");
     need(method(b.payment), "Please choose a payment method.");
     return {
       t: "o", ref: makeRef(C.orderPrefix), at: new Date().toISOString(),

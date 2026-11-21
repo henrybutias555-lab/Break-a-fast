@@ -355,6 +355,7 @@
       input.dispatchEvent(new Event("change", { bubbles: true }));
     };
     [d, m, y].forEach((s) => s.addEventListener("change", sync));
+    input.setDate = (iso) => { set(iso); sync(); };
     sync();
   }
 
