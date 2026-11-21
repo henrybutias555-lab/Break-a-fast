@@ -20,7 +20,10 @@ const app = createApp({
   ALERT_URL: process.env.ALERT_URL || "",
   ALERT_KEY: process.env.ALERT_KEY || "",
   ALLOWED_ORIGINS: (process.env.ALLOWED_ORIGINS || "https://break-a-fast.onrender.com").split(",").map((s) => s.trim()),
-  W: sandbox.window, crypto, Buffer
+  W: sandbox.window, crypto, Buffer,
+  LOGOS: Object.fromEntries([["header", "logo-invoice.jpg"], ["watermark", "logo-watermark.jpg"]].map(([k, f]) => {
+    try { return [k, "data:image/jpeg;base64," + fs.readFileSync(path.join(ROOT, "assets", "img", f)).toString("base64")]; } catch (e) { return [k, ""]; }
+  }))
 });
 
 http.createServer((req, res) => {

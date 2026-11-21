@@ -2,6 +2,7 @@
    createApp(cfg) -> { handle(req) }. No platform APIs here: crypto/Buffer are passed in. */
 function createApp(cfg) {
   const { SECRET, ALERT_URL, ALERT_KEY, ALLOWED_ORIGINS, W, crypto, Buffer } = cfg;
+  const LOGOS = cfg.LOGOS || {};          // data: URIs for the invoice (no cross-site image loading)
   const C = W.BAF_CONFIG, PRODUCTS = W.BAF_PRODUCTS, GROUPS = W.BAF_EVENT_GROUPS;
   const METHODS = C.paymentMethods;
   const method = (id) => METHODS.find((m) => m.id === id);
@@ -364,9 +365,9 @@ table.items td{padding:9px 6px;border-bottom:1px solid #f0e4d2;vertical-align:to
   <div style="font-size:.8rem;color:#6f5547" id="tip">Tip: download the PDF, then attach it in the WhatsApp chat. Send the PDF, not this page link.</div>
 </div>
 <div class="sheet">
-  <img class="wm" crossorigin="anonymous" src="${esc(site)}/assets/img/logo.jpg" alt="">
+  <img class="wm" src="${LOGOS.watermark || esc(site) + "/assets/img/logo-watermark.jpg"}" alt="">
   <div class="top">
-    <div class="brand"><img crossorigin="anonymous" src="${esc(site)}/assets/img/logo-sm.jpg" alt=""><div><b>${esc(C.businessName)}</b><span>${esc(C.tagline)}<br>${esc(C.phone)} / ${esc(C.altPhone)}</span></div></div>
+    <div class="brand"><img src="${LOGOS.header || esc(site) + "/assets/img/logo-invoice.jpg"}" alt=""><div><b>${esc(C.businessName)}</b><span>${esc(C.tagline)}<br>${esc(C.phone)} / ${esc(C.altPhone)}</span></div></div>
     <div class="inv"><h1>INVOICE</h1><div>No. <b>${esc(x.ref)}</b></div><div>Date: ${esc(niceDate(today))}</div>${data.paid ? `<div class="stamp">PAYMENT REPORTED</div>` : ""}</div>
   </div>
   <div class="cols">
