@@ -253,7 +253,7 @@ function createApp(cfg) {
 
   /* ---------- verify page ---------- */
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  function verifyPage(x) {
+  function verifyPage(x, codeForInvoice = "") {
     const row = (k, v) => `<tr><th>${esc(k)}</th><td>${v}</td></tr>`;
     let body;
     if (!x) {
@@ -269,7 +269,8 @@ function createApp(cfg) {
         ${row("Payment method", esc(m ? m.name : x.pm))}
         ${x.py ? row("Payment", "Customer says they have paid") + (x.py.txn ? row("Customer's Transaction ID", esc(x.py.txn)) : "") + (x.py.from ? row("Paid from", esc(x.py.from + (x.py.s ? " (" + x.py.s + ")" : ""))) : "") : row("Payment", "Not reported yet")}
         </table>
-        <div class="todo"><b>Before you start this order:</b> check your ${esc(m ? m.name : "")} SMS/statement shows <b>${money(x.tot)}</b> received${x.py && x.py.txn ? ` with Transaction ID <b>${esc(x.py.txn)}</b>` : ""} and reference <b>${esc(x.ref)}</b>. The website cannot see your account, so only your own SMS/statement proves the money arrived.</div>`;
+        <div class="todo"><b>Before you start this order:</b> check your ${esc(m ? m.name : "")} SMS/statement shows <b>${money(x.tot)}</b> received${x.py && x.py.txn ? ` with Transaction ID <b>${esc(x.py.txn)}</b>` : ""} and reference <b>${esc(x.ref)}</b>. The website cannot see your account, so only your own SMS/statement proves the money arrived.</div>
+        <p><a class="inv" href="../i/${esc(codeForInvoice)}">📄 Open invoice</a></p>`;
     } else {
       const m = method(x.pm);
       body = `<div class="ok">✔ GENUINE EVENT ENQUIRY</div><p class="sub">Created by the website on ${esc(new Date(x.at).toLocaleString("en-GB", { timeZone: "UTC" }))} GMT</p>
@@ -281,7 +282,8 @@ function createApp(cfg) {
         ${row("Name", esc(x.n))}${row("Phone", esc(x.p))}${x.m ? row("Message", esc(x.m)) : ""}
         ${row("Preferred payment", esc(m ? m.name : x.pm))}
         </table>
-        <div class="todo">When the token arrives, check your SMS/statement shows the right amount with reference <b>${esc(x.ref)}</b>.</div>`;
+        <div class="todo">When the token arrives, check your SMS/statement shows the right amount with reference <b>${esc(x.ref)}</b>.</div>
+        <p><a class="inv" href="../i/${esc(codeForInvoice)}">📄 Open invoice</a></p>`;
     }
     return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
   <title>Verify | Break-a-Fast</title><style>
@@ -290,12 +292,121 @@ function createApp(cfg) {
   .ok,.bad{font-weight:800;font-size:1.4rem;padding:16px;border-radius:14px;text-align:center;color:#fff}.ok{background:#2f7d4a}.bad{background:#c0392b}
   .sub{color:#6f5547;font-size:.9rem;text-align:center}h2{margin:16px 0 8px;color:#3b1f14}
   table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden}th,td{text-align:left;padding:10px 12px;border-bottom:1px solid #e8d6bd;vertical-align:top}
-  th{color:#6f5547;font-weight:600;width:38%}th,td{overflow-wrap:anywhere}.item{font-weight:700;color:#3b1f14}.calc{color:#6f5547;margin-top:2px}.calc b{color:#2a1710}.big{font-size:1.2rem;color:#a8174f}.todo{margin-top:16px;background:#fff7e6;border:1px solid #f1d39a;border-radius:12px;padding:12px 14px}
+  th{color:#6f5547;font-weight:600;width:38%}th,td{overflow-wrap:anywhere}.item{font-weight:700;color:#3b1f14}.calc{color:#6f5547;margin-top:2px}.calc b{color:#2a1710}.big{font-size:1.2rem;color:#a8174f}.todo{margin-top:16px;background:#fff7e6;border:1px solid #f1d39a;border-radius:12px;padding:12px 14px}.inv{display:inline-block;margin-top:6px;background:#a8174f;color:#fff;padding:10px 16px;border-radius:999px;text-decoration:none;font-weight:700}
   </style></head><body><main><h1>Break-a-Fast · Order verification</h1>${body}</main></body></html>`;
   }
 
+  /* ---------- printable invoice (owner opens it from the email alert) ---------- */
+  function minusWorkingDays(iso, n) {
+    const d = new Date(iso + "T12:00:00Z");
+    while (n > 0) { d.setUTCDate(d.getUTCDate() - 1); const w = d.getUTCDay(); if (w !== 0 && w !== 6) n--; }
+    return d.toISOString().slice(0, 10);
+  }
+  function invoicePage(x) {
+    if (!x) return verifyPage(null).replace("Order verification", "Invoice");
+    const site = ALLOWED_ORIGINS[0] || "";
+    const isE = x.t === "e";
+    const today = ghanaToday();
+    const name = isE ? x.n : x.c.n, phone = isE ? x.p : x.c.p;
+    const lines = isE
+      ? [[`${x.pk}${x.g ? " (" + x.g + ")" : ""}${x.gu ? ", " + x.gu + " guests" : ""}`, 1, x.tot - x.ad.reduce((s, a) => s + a[1], 0)], ...x.ad.map((a) => [a[0], 1, a[1]])]
+      : x.it.map((i) => [itemTitle(i) + " · " + i[1], i[3], unitOf(i) || 0]);
+    const balDue = isE ? minusWorkingDays(x.d, 14) : "";
+    const data = {
+      ref: x.ref, isE, name, phone, lines, pct: C.eventDepositPercent,
+      balDue: isE ? (balDue > today ? niceDate(balDue) : "On confirmation of booking") : "",
+      paid: !isE && !!x.py, delivery: !isE && x.c.f === "Delivery", custom: isE && !x.tot,
+      biz: C.businessName, payRef: x.ref
+    };
+    const pay = METHODS.map((m) => `<tr><td>${esc(m.name)}${m.kind === "bank" ? " · " + esc(m.bank) : ""}</td><td><b>${esc(m.number)}</b></td><td>${esc(m.accountName)}</td></tr>`).join("");
+    const when = isE ? `${esc(x.ty)} · ${esc(niceDate(x.d))}` : `${esc(x.c.f)} · ${esc(niceDate(x.c.d))}, ${esc(x.c.tm)}`;
+    const where = isE ? (x.v ? esc(x.v) : "Venue to be shared") : (x.c.f === "Delivery" ? esc(x.c.a || "Address to be confirmed") : "Pick-up");
+    const menu = isE && (x.pi || []).length ? `<h3>Menu choices</h3><ul class="menu">${x.pi.map((p) => `<li><b>${esc(p[0])}:</b> ${esc(p[1].length ? p[1].join(", ") : "to be suggested")}</li>`).join("")}<li><b>Bar set-up</b></li></ul>` : "";
+    const terms = isE
+      ? `Booking is valid once ${C.eventDepositPercent}% is paid. Full payment is due at least 14 working days before the event (or on confirmation for later bookings). Transport is not included in package prices. No refund on cancellation except force majeure (40% of the amount paid refunded). Prices may change after 2–3 months.`
+      : `Orders are prepared once full payment is confirmed. Delivery fee depends on location. Please quote the reference when paying.`;
+    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
+<title>Invoice ${esc(x.ref)} | Break-a-Fast</title><style>
+*{box-sizing:border-box}body{margin:0;font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;background:#efe6d8;color:#2a1710}
+.tools{max-width:820px;margin:16px auto 0;padding:14px 16px;background:#fff;border-radius:14px;display:grid;gap:10px}
+.tools h2{margin:0;font-size:1rem;color:#3b1f14}.tools .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tools label{font-size:.85rem;font-weight:700;color:#6f5547;display:grid;gap:4px}
+.tools input,.tools textarea{font:inherit;padding:10px;border:2px solid #e8d6bd;border-radius:10px;width:100%}
+.btns{display:flex;flex-wrap:wrap;gap:8px}.btns button,.btns a{font:700 .95rem system-ui;padding:11px 16px;border-radius:999px;border:0;cursor:pointer;text-decoration:none;color:#fff;background:#3b1f14}.btns .wa{background:#1fa855}
+.sheet{max-width:820px;margin:16px auto 40px;background:#fff;padding:36px 40px;border-radius:6px;box-shadow:0 6px 24px rgba(0,0,0,.08)}
+.top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;border-bottom:3px solid #3b1f14;padding-bottom:16px}
+.brand{display:flex;gap:12px;align-items:center}.brand img{width:64px;height:64px;border-radius:50%}
+.brand b{display:block;font-size:1.15rem;color:#3b1f14}.brand span{font-size:.85rem;color:#6f5547}
+.inv{text-align:right}.inv h1{margin:0;font-size:1.8rem;letter-spacing:2px;color:#a8174f}.inv div{font-size:.9rem}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:20px 0}.cols h3,h3{margin:0 0 4px;font-size:.8rem;letter-spacing:1px;text-transform:uppercase;color:#6f5547}
+table.items{width:100%;border-collapse:collapse;margin-top:6px}table.items th{text-align:left;font-size:.8rem;text-transform:uppercase;color:#6f5547;border-bottom:2px solid #e8d6bd;padding:8px 6px}
+table.items td{padding:9px 6px;border-bottom:1px solid #f0e4d2;vertical-align:top}table.items td.n,table.items th.n{text-align:right;white-space:nowrap}
+.sum{margin-left:auto;width:min(100%,320px);margin-top:10px}.sum div{display:flex;justify-content:space-between;padding:5px 0}
+.sum .tot{border-top:2px solid #3b1f14;font-weight:800;font-size:1.15rem;margin-top:4px;padding-top:8px}.sum .dep{color:#a8174f;font-weight:800}
+.menu{margin:6px 0 0;padding-left:18px;font-size:.92rem}.pay{width:100%;border-collapse:collapse;font-size:.9rem;margin-top:6px}.pay td{padding:6px;border-bottom:1px solid #f0e4d2}
+.box{margin-top:18px}.note{background:#fbf3e6;border-radius:10px;padding:10px 12px;font-size:.88rem;white-space:pre-wrap}.terms{font-size:.8rem;color:#6f5547;margin-top:18px}
+.stamp{display:inline-block;border:2px solid #2f7d4a;color:#2f7d4a;font-weight:800;padding:2px 10px;border-radius:6px;font-size:.85rem;margin-top:6px}
+@media (max-width:600px){.sheet{padding:20px 16px}.top,.cols{grid-template-columns:1fr;display:grid}.inv{text-align:left}.tools .row{grid-template-columns:1fr}}
+@media print{body{background:#fff}.tools{display:none}.sheet{box-shadow:none;margin:0;max-width:none;padding:0}@page{margin:14mm}}
+</style></head><body>
+<div class="tools">
+  <h2>Prepare invoice ${esc(x.ref)}</h2>
+  <div class="row">
+    <label>${isE ? "Transport (GH₵)" : data.delivery ? "Delivery fee (GH₵)" : "Extra charge (GH₵)"}<input id="fee" type="number" min="0" step="1" inputmode="decimal" placeholder="0"></label>
+    <label>Discount (GH₵)<input id="disc" type="number" min="0" step="1" inputmode="decimal" placeholder="0"></label>
+  </div>
+  ${data.custom ? `<label>Quoted price (GH₵)<input id="quote" type="number" min="0" step="1" inputmode="decimal" placeholder="Custom quote"></label>` : ""}
+  <label>Note on invoice (optional)<textarea id="noteIn" rows="2" placeholder="e.g. Delivery to East Legon, set-up from 2pm"></textarea></label>
+  <div class="btns"><button id="print" type="button">Save as PDF / Print</button><a class="wa" id="wa" target="_blank" rel="noopener">Send to customer on WhatsApp</a></div>
+  <div style="font-size:.8rem;color:#6f5547">Tip: save the PDF, then attach it in the WhatsApp chat. Send the PDF, not this page link.</div>
+</div>
+<div class="sheet">
+  <div class="top">
+    <div class="brand"><img src="${esc(site)}/assets/img/logo-sm.jpg" alt=""><div><b>${esc(C.businessName)}</b><span>${esc(C.tagline)}<br>${esc(C.phone)} / ${esc(C.altPhone)}</span></div></div>
+    <div class="inv"><h1>INVOICE</h1><div>No. <b>${esc(x.ref)}</b></div><div>Date: ${esc(niceDate(today))}</div>${data.paid ? `<div class="stamp">PAYMENT REPORTED</div>` : ""}</div>
+  </div>
+  <div class="cols">
+    <div><h3>Bill to</h3><b>${esc(name)}</b><br>${esc(phone)}<br>${where}</div>
+    <div><h3>${isE ? "Event" : "Order"}</h3>${when}${isE ? "" : `<br>Payment method: ${esc(method(x.pm).name)}`}</div>
+  </div>
+  <table class="items"><thead><tr><th>Description</th><th class="n">Qty</th><th class="n">Unit price</th><th class="n">Amount</th></tr></thead><tbody id="lines"></tbody></table>
+  <div class="sum" id="sum"></div>
+  ${menu}
+  <div class="box" id="noteBox" hidden><h3>Note</h3><div class="note" id="noteOut"></div></div>
+  <div class="box"><h3>How to pay · use reference <b style="color:#a8174f">${esc(x.ref)}</b></h3><table class="pay">${pay}</table></div>
+  <p class="terms">${esc(terms)}</p>
+</div>
+<script>
+const D=${JSON.stringify(data).replace(/</g, "\\u003c")};
+const $=(i)=>document.getElementById(i), fmt=(n)=>"GH₵"+Number(n).toLocaleString("en-US",{maximumFractionDigits:2});
+const key="baf_inv_"+D.ref; let saved={}; try{saved=JSON.parse(localStorage.getItem(key)||"{}")}catch(e){}
+["fee","disc","quote","noteIn"].forEach(k=>{if($(k)&&saved[k]!=null)$(k).value=saved[k]});
+function e(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function draw(){
+  const fee=+($("fee").value||0), disc=+($("disc").value||0), quote=$("quote")?+($("quote").value||0):0;
+  let lines=D.lines.slice(); if(D.custom) lines=[[lines[0][0]||"Custom catering",1,quote]];
+  const rows=lines.map(l=>[l[0],l[1],l[2],l[1]*l[2]]);
+  if(fee) rows.push([D.isE?"Transport":D.delivery?"Delivery fee":"Extra charge",1,fee,fee]);
+  $("lines").innerHTML=rows.map(r=>"<tr><td>"+e(r[0])+"</td><td class=n>"+r[1]+"</td><td class=n>"+fmt(r[2])+"</td><td class=n>"+fmt(r[3])+"</td></tr>").join("");
+  const sub=rows.reduce((s,r)=>s+r[3],0), tot=Math.max(0,sub-disc);
+  let h="<div><span>Subtotal</span><span>"+fmt(sub)+"</span></div>"+(disc?"<div><span>Discount</span><span>−"+fmt(disc)+"</span></div>":"")+"<div class=tot><span>Total</span><span>"+fmt(tot)+"</span></div>";
+  if(D.isE){const dep=Math.round(tot*D.pct)/100; h+="<div class=dep><span>"+D.pct+"% deposit to book</span><span>"+fmt(dep)+"</span></div><div><span>Balance</span><span>"+fmt(tot-dep)+"</span></div><div><span>Balance due</span><span>"+e(D.balDue)+"</span></div>"; if(!fee) h+="<div style='font-size:.8rem;color:#6f5547'><span>Transport to be added</span></div>";}
+  else h+="<div><span>Status</span><span>"+(D.paid?"Customer reports paid":"Payment due before preparation")+"</span></div>";
+  $("sum").innerHTML=h;
+  const n=$("noteIn").value.trim(); $("noteBox").hidden=!n; $("noteOut").textContent=n;
+  const ph="233"+String(D.phone).replace(/^0/,"");
+  const msg="Hello "+D.name.split(" ")[0]+", here is your invoice "+D.ref+" from "+D.biz+".\\nTotal: "+fmt(tot)+(D.isE?"\\n"+D.pct+"% deposit to book: "+fmt(Math.round(tot*D.pct)/100)+"\\nBalance due: "+D.balDue:"")+"\\nPlease use reference "+D.payRef+" when paying. Thank you!";
+  $("wa").href="https://wa.me/"+ph+"?text="+encodeURIComponent(msg);
+  try{localStorage.setItem(key,JSON.stringify({fee:$("fee").value,disc:$("disc").value,quote:$("quote")?$("quote").value:"",noteIn:$("noteIn").value}))}catch(e){}
+}
+document.querySelectorAll(".tools input,.tools textarea").forEach(i=>i.addEventListener("input",draw));
+$("print").addEventListener("click",()=>window.print());
+draw();
+</script></body></html>`;
+  }
+
   /* ---------- owner email alerts (via the owner's Google Apps Script) ---------- */
-  function alertHtml(title, color, x, url) {
+  function alertHtml(title, color, x, url, inv) {
     const row = (k, v) => `<tr><td style="padding:6px 10px;color:#6f5547;border-bottom:1px solid #eee;vertical-align:top">${esc(k)}</td><td style="padding:6px 10px;border-bottom:1px solid #eee">${v}</td></tr>`;
     let rows = "";
     if (x.t === "o") {
@@ -314,17 +425,17 @@ function createApp(cfg) {
     return `<div style="font-family:Arial,sans-serif;max-width:560px">
       <div style="background:${color};color:#fff;padding:14px 16px;border-radius:10px;font-size:18px;font-weight:bold">${esc(title)}</div>
       <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:14px">${rows}</table>
-      <p style="margin-top:14px"><a href="${esc(url)}" style="background:#3b1f14;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Open verify page</a></p>
+      <p style="margin-top:14px">${inv ? `<a href="${esc(inv)}" style="background:#a8174f;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;margin-right:8px">📄 Create invoice</a>` : ""}<a href="${esc(url)}" style="background:#3b1f14;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Open verify page</a></p>
       <p style="color:#888;font-size:12px">This alert comes from the Break-a-Fast order server, not from the customer, so the details above are exactly what was placed on the website.</p></div>`;
   }
-  function sendAlert(kind, x, url) {
+  function sendAlert(kind, x, url, inv) {
     if (!ALERT_URL || !ALERT_KEY) return Promise.resolve();
     let subject, title, color;
     if (kind === "order") { subject = `🟡 New order ${x.ref} · ${money(x.tot)} · awaiting payment`; title = `New order ${x.ref}: awaiting payment`; color = "#c27a12"; }
     else if (kind === "paid") { subject = `🟢 Payment reported ${x.ref} · ${money(x.tot)} · ${method(x.pm).name}${x.py.txn ? " · TXN " + x.py.txn : ""} · ${x.c.tm}`; title = `Customer reported payment for ${x.ref}. Check your ${method(x.pm).name} SMS.`; color = "#2f7d4a"; }
     else { subject = `🎉 Event enquiry ${x.ref} · ${x.ty} · ${niceDate(x.d)}`; title = `New event enquiry ${x.ref}`; color = "#a8174f"; }
     const ctrl = new AbortController(); setTimeout(() => ctrl.abort(), 20000);
-    return fetch(ALERT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ key: ALERT_KEY, subject, html: alertHtml(title, color, x, url) }), redirect: "follow", signal: ctrl.signal })
+    return fetch(ALERT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ key: ALERT_KEY, subject, html: alertHtml(title, color, x, url, inv) }), redirect: "follow", signal: ctrl.signal })
       .then((r) => r.text()).then((t) => { if (t.trim() !== "ok") console.error("alert not sent:", /<html/i.test(t) ? "Google returned a sign-in page: set the Apps Script web app access to Anyone" : t.slice(0, 200)); })
       .catch((e) => console.error("alert failed:", e.message));
   }
@@ -353,7 +464,11 @@ function createApp(cfg) {
       if (req.method === "GET" && p === "/health") return out(200, { ok: true });
       if (req.method === "GET" && p.startsWith("/v/")) {
         const t = decodeURIComponent(p.slice(3)).replace(/[^0-9A-Za-z._-]/g, "");
-        return { ...out(200, verifyPage(t.includes(".") ? open(t) : openShort(t)), "text/html"), headers: {} };
+        return { ...out(200, verifyPage(t.includes(".") ? open(t) : openShort(t), t), "text/html"), headers: {} };
+      }
+      if (req.method === "GET" && p.startsWith("/i/")) {
+        const t = decodeURIComponent(p.slice(3)).replace(/[^0-9A-Za-z._-]/g, "");
+        return { ...out(200, invoicePage(t.includes(".") ? open(t) : openShort(t)), "text/html"), headers: {} };
       }
       if (req.method === "POST" && p.startsWith("/api/")) {
         if (limited(req.ip || "?")) return out(429, { error: "Too many requests. Please wait a few minutes." });
@@ -363,7 +478,7 @@ function createApp(cfg) {
         need(b && typeof b === "object", "Invalid request.");
         if (p === "/api/order") {
           const o = buildOrder(b), token = seal(o), v = `${base}/v/${shortCode(o)}`;
-          waits.push(sendAlert("order", o, v));
+          waits.push(sendAlert("order", o, v, `${base}/i/${token}`));
           return out(200, { order: o, token, verifyUrl: v, message: orderText(o, v) });
         }
         if (p === "/api/pay") {
@@ -379,12 +494,12 @@ function createApp(cfg) {
           if (b.payment && method(b.payment)) o.pm = b.payment;
           o.py = { txn, from, s: str(b.sender, 80), at: new Date().toISOString() };
           const token = seal(o), v = `${base}/v/${shortCode(o)}`;
-          waits.push(sendAlert("paid", o, v));
+          waits.push(sendAlert("paid", o, v, `${base}/i/${token}`));
           return out(200, { order: o, token, verifyUrl: v, message: orderText(o, v) });
         }
         if (p === "/api/event") {
           const e = buildEvent(b), v = `${base}/v/${shortCode(e)}`;
-          waits.push(sendAlert("event", e, v));
+          waits.push(sendAlert("event", e, v, `${base}/i/${seal(e)}`));
           return out(200, { enquiry: e, verifyUrl: v, message: eventText(e, v) });
         }
       }
