@@ -20,6 +20,10 @@ SECTIONS = [
     ("party-packages", "Party & Event Packages", "Snacks, finger foods, drinks & bar set-up", "events.html?group=party#packages"),
     ("breakfast-packages", "Breakfast Event Packages", "Luxury Dine & Lavish Feast, 20-100 guests", "events.html?group=breakfast#packages"),
     ("full-menu", "Full Menu", "Everything we make", "menu.html"),
+    ("order-now", "Order Now", "Pick your treats & order online", "menu.html"),
+    ("home", "Break-a-Fast", "Our home page", ""),
+    ("about", "About Us", "Our story, mission & vision", "about.html"),
+    ("contact", "Contact Us", "Call, WhatsApp or Instagram", "contact.html"),
 ]
 BROWN, CREAM, BERRY = (59, 31, 20), (251, 243, 230), (168, 23, 79)
 
