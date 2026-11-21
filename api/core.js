@@ -349,22 +349,24 @@ table.items td{padding:9px 6px;border-bottom:1px solid #f0e4d2;vertical-align:to
 .stamp{display:inline-block;border:2px solid #2f7d4a;color:#2f7d4a;font-weight:800;padding:2px 10px;border-radius:6px;font-size:.85rem;margin-top:6px}
 @media (max-width:600px){.sheet{padding:20px 16px}.top,.cols{grid-template-columns:1fr;display:grid}.inv{text-align:left}.tools .row{grid-template-columns:1fr}}
 @media print{body{background:#fff}.tools{display:none}.sheet{box-shadow:none;margin:0;max-width:none;padding:0}@page{margin:14mm}}
-</style></head><body>
+</style>
+<script src="${esc(site)}/assets/vendor/html2pdf.bundle.min.js" defer></script>
+</head><body>
 <div class="tools">
   <h2>Prepare invoice ${esc(x.ref)}</h2>
   <div class="row">
-    <label>${isE ? "Transport (GH₵)" : data.delivery ? "Delivery fee (GH₵)" : "Extra charge (GH₵)"}<input id="fee" type="number" min="0" step="1" inputmode="decimal" placeholder="0"></label>
-    <label>Discount (GH₵)<input id="disc" type="number" min="0" step="1" inputmode="decimal" placeholder="0"></label>
+    <label>${isE ? "Transport (GH₵)" : data.delivery ? "Delivery fee (GH₵)" : "Extra charge (GH₵)"}<input id="fee" autocomplete="off" type="number" min="0" step="1" inputmode="decimal" placeholder="0"></label>
+    <label>Discount (GH₵)<input id="disc" autocomplete="off" type="number" min="0" step="1" inputmode="decimal" placeholder="0"></label>
   </div>
-  ${data.custom ? `<label>Quoted price (GH₵)<input id="quote" type="number" min="0" step="1" inputmode="decimal" placeholder="Custom quote"></label>` : ""}
-  <label>Note on invoice (optional)<textarea id="noteIn" rows="2" placeholder="e.g. Delivery to East Legon, set-up from 2pm"></textarea></label>
-  <div class="btns"><button id="print" type="button">Save as PDF / Print</button><a class="wa" id="wa" target="_blank" rel="noopener">Send to customer on WhatsApp</a></div>
-  <div style="font-size:.8rem;color:#6f5547">Tip: save the PDF, then attach it in the WhatsApp chat. Send the PDF, not this page link.</div>
+  ${data.custom ? `<label>Quoted price (GH₵)<input id="quote" autocomplete="off" type="number" min="0" step="1" inputmode="decimal" placeholder="Custom quote"></label>` : ""}
+  <label>Note on invoice (optional)<textarea id="noteIn" autocomplete="off" rows="2" placeholder="e.g. Delivery to East Legon, set-up from 2pm"></textarea></label>
+  <div class="btns"><button id="pdf" type="button">⬇ Download PDF</button><a class="wa" id="wa" target="_blank" rel="noopener">Send to customer on WhatsApp</a><button id="print" type="button" style="background:#6f5547">Print</button></div>
+  <div style="font-size:.8rem;color:#6f5547" id="tip">Tip: download the PDF, then attach it in the WhatsApp chat. Send the PDF, not this page link.</div>
 </div>
 <div class="sheet">
-  <img class="wm" src="${esc(site)}/assets/img/logo.jpg" onerror="this.src='${esc(site)}/assets/img/logo-sm.jpg'" alt="">
+  <img class="wm" crossorigin="anonymous" src="${esc(site)}/assets/img/logo.jpg" alt="">
   <div class="top">
-    <div class="brand"><img src="${esc(site)}/assets/img/logo-sm.jpg" alt=""><div><b>${esc(C.businessName)}</b><span>${esc(C.tagline)}<br>${esc(C.phone)} / ${esc(C.altPhone)}</span></div></div>
+    <div class="brand"><img crossorigin="anonymous" src="${esc(site)}/assets/img/logo-sm.jpg" alt=""><div><b>${esc(C.businessName)}</b><span>${esc(C.tagline)}<br>${esc(C.phone)} / ${esc(C.altPhone)}</span></div></div>
     <div class="inv"><h1>INVOICE</h1><div>No. <b>${esc(x.ref)}</b></div><div>Date: ${esc(niceDate(today))}</div>${data.paid ? `<div class="stamp">PAYMENT REPORTED</div>` : ""}</div>
   </div>
   <div class="cols">
@@ -402,9 +404,21 @@ function draw(){
   $("wa").href="https://wa.me/"+ph+"?text="+encodeURIComponent(msg);
   try{localStorage.setItem(key,JSON.stringify({fee:$("fee").value,disc:$("disc").value,quote:$("quote")?$("quote").value:"",noteIn:$("noteIn").value}))}catch(e){}
 }
-document.querySelectorAll(".tools input,.tools textarea").forEach(i=>i.addEventListener("input",draw));
-$("print").addEventListener("click",()=>window.print());
-draw();
+document.querySelectorAll(".tools input,.tools textarea").forEach(i=>["input","change","keyup","blur"].forEach(ev=>i.addEventListener(ev,draw)));
+["pageshow","load","focus"].forEach(ev=>window.addEventListener(ev,draw));
+window.addEventListener("beforeprint",draw);
+$("wa").addEventListener("click",draw);            // runs before the link opens, so the message is always current
+$("print").addEventListener("click",()=>{draw();window.print()});
+$("pdf").addEventListener("click",async()=>{
+  draw(); const btn=$("pdf"), old=btn.textContent; btn.disabled=true; btn.textContent="Making PDF…";
+  try{
+    if(!window.html2pdf) throw new Error("PDF tool not loaded");
+    await html2pdf().set({margin:[8,8,8,8],filename:"Invoice-"+D.ref+".pdf",image:{type:"jpeg",quality:0.96},html2canvas:{scale:2,useCORS:true,backgroundColor:"#ffffff"},jsPDF:{unit:"mm",format:"a4",orientation:"portrait"},pagebreak:{mode:["css","legacy"]}}).from(document.querySelector(".sheet")).save();
+    $("tip").textContent="PDF downloaded (Invoice-"+D.ref+".pdf). Attach it in the WhatsApp chat.";
+  }catch(e){ window.print(); }
+  btn.disabled=false; btn.textContent=old;
+});
+draw(); setTimeout(draw,300);
 </script></body></html>`;
   }
 
