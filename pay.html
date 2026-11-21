@@ -52,6 +52,7 @@
         <div class="choice" id="kind-choices"></div></div>
       <div class="field" id="other-field" hidden><label for="p-amt">Amount paid (GH₵)</label><input id="p-amt" type="number" min="1" step="1" inputmode="decimal"><div class="err">Please enter the amount you paid.</div></div>
       <div class="field"><label for="p-method">Paid with</label><select id="p-method"></select></div>
+      <div class="field" id="time-field" hidden><label for="p-time">Delivery time</label><select id="p-time"></select><div class="hint" id="time-hint"></div></div>
       <label class="check"><input type="checkbox" id="p-ok"> <span>I have sent this amount using reference <b id="p-ref"></b>.</span></label>
       <button class="btn btn-block" type="submit" id="p-send" disabled>I've paid</button>
     </form>
@@ -78,17 +79,29 @@
 
     // Event bookings: report a payment (deposit / full / other)
     const t = q.get("t"), full = Number(q.get("full"));
-    if (okRef && ref.startsWith("EVT-") && t) {
+    const pendDate = q.get("d") || "";
+    if (okRef && t) {
+      const isOrder = ref.startsWith("BAF-");
       const box = document.getElementById("paid-box"); box.hidden = false;
       document.getElementById("p-ref").textContent = ref;
       const opts = [];
-      if (amt > 0) opts.push(["deposit", `${C.eventDepositPercent}% deposit`, amt]);
-      if (full > 0 && full !== amt) opts.push(["full", "Full amount", full]);
-      opts.push(["other", "Another amount", 0]);
+      if (isOrder && amt > 0) opts.push(["full", "Full amount", amt]);
+      else if (amt > 0) opts.push(["deposit", `${C.eventDepositPercent}% deposit`, amt]);
+      if (!isOrder && full > 0 && full !== amt) opts.push(["full", "Full amount", full]);
+      if (!isOrder) opts.push(["other", "Another amount", 0]);
       document.getElementById("kind-choices").innerHTML = opts.map(([k, l, v], i) => `<label><input type="radio" name="kind" value="${k}" data-amt="${v}"${i === 0 ? " checked" : ""}> <span>${esc(l)}${v ? `<small>${money(v)}</small>` : ""}</span></label>`).join("");
       document.getElementById("p-method").innerHTML = C.paymentMethods.map((m) => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join("");
       const f = document.getElementById("paid-form"), other = document.getElementById("other-field"), send = document.getElementById("p-send"), ok = document.getElementById("p-ok");
       const kind = () => f.querySelector("input[name=kind]:checked");
+      // orders for a future date choose their time slot here, after paying
+      const tf = document.getElementById("time-field");
+      if (isOrder && /^\d{4}-\d{2}-\d{2}$/.test(pendDate)) {
+        const OH = Object.assign({ open: 8, close: 19 }, C.orderHours), hr = (h) => (h === 12 ? "12pm" : h > 12 ? h - 12 + "pm" : h + "am");
+        const slots = []; for (let h = OH.open; h < OH.close; h++) slots.push(`${hr(h)} to ${hr(h + 1)}`);
+        document.getElementById("p-time").innerHTML = slots.map((x) => `<option>${esc(x)}</option>`).join("");
+        document.getElementById("time-hint").textContent = "For " + new Date(pendDate + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" }) + ". Shown once you tick that you've paid.";
+        ok.addEventListener("change", () => (tf.hidden = !ok.checked));
+      }
       const upd = () => { other.hidden = kind().value !== "other"; };
       f.querySelectorAll("input[name=kind]").forEach((r) => r.addEventListener("change", upd)); upd();
       ok.addEventListener("change", () => (send.disabled = !ok.checked));
@@ -99,11 +112,14 @@
         if (!(amount > 0)) return BAF.focusField(document.getElementById("p-amt"));
         send.disabled = true; send.textContent = "Sending…";
         try {
-          const r = await BAF.api("/api/event-paid", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t, kind: k.value, amount, payment: document.getElementById("p-method").value }) });
+          const pmv = document.getElementById("p-method").value;
+          const r = isOrder
+            ? await BAF.api("/api/pay", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t, payment: pmv, time: tf.hidden ? "" : document.getElementById("p-time").value }) })
+            : await BAF.api("/api/event-paid", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t, kind: k.value, amount, payment: pmv }) });
           const j = await r.json().catch(() => ({}));
           if (!r.ok) throw new Error(j.error || "Could not send. Please try again.");
           f.hidden = true;
-          document.getElementById("p-result").innerHTML = `<div class="notice ok"><b>Thank you!</b> We've been told about your payment of ${money(amount)} for ${esc(ref)}. We'll check it and send your receipt on WhatsApp.</div>`;
+          document.getElementById("p-result").innerHTML = `<div class="notice ok"><b>Thank you!</b> We've been told about your payment of ${money(amount)} for ${esc(ref)}${!tf.hidden ? ", delivery " + esc(document.getElementById("p-time").value) : ""}. We'll check it and send your receipt on WhatsApp.</div>`;
         } catch (err) {
           document.getElementById("p-result").innerHTML = `<div class="notice warn"><b>${esc(err.message)}</b></div>`;
           send.disabled = false; send.textContent = "I've paid";

@@ -30,6 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderHead() {
     const st = order.status === "Awaiting Confirmation" ? "awaiting" : "pending";
+    if (order.status === "Pending Payment") order.status = "Awaiting Invoice";
     $("#head").innerHTML = `
       <p class="script" style="font-size:1.2rem;margin:0">Thank you, ${esc(c.n.split(" ")[0])}!</p>
       <h1 style="margin-bottom:6px">Order ${esc(order.ref)}</h1>
@@ -190,7 +191,28 @@ document.addEventListener("DOMContentLoaded", () => {
     $$("#steps li").forEach((li) => { li.classList.add("done"); li.classList.remove("active"); });
   }
 
+  function renderPlaced() {
+    $$("#steps li").forEach((li) => { li.classList.add("done"); li.classList.remove("active"); });
+    const url = order.message ? waLink(order.message) : "";
+    root.innerHTML = `
+      <div class="checkout">
+        <section class="panel" aria-labelledby="h-placed">
+          <div class="notice ok" style="margin-bottom:14px"><b>Order received!</b> Your order reference is <code class="k">${esc(order.ref)}</code>.</div>
+          <h2 id="h-placed">What happens next</h2>
+          <ol class="timeline">
+            <li><div><b>We send your invoice</b>You'll get an invoice on WhatsApp with the total and payment details (Telecel Cash, MTN MoMo or bank).</div></li>
+            <li><div><b>You pay and tap "I've paid"</b>Use the link on the invoice${c.tm === PENDING ? ", then choose your delivery time" : ""}.</div></li>
+            <li><div><b>We confirm and send your receipt</b>Then we prepare your order for ${niceDate(c.d)}${c.tm === PENDING ? "" : ", " + esc(c.tm.toLowerCase())}.</div></li>
+          </ol>
+          ${url ? `<a class="btn btn-wa btn-block" style="margin-top:16px" href="${url}" target="_blank" rel="noopener">Send my order on WhatsApp</a>
+          <p class="small muted" style="margin-top:8px">Optional: this sends your order details to us right away. We've already been notified.</p>` : ""}
+          <div class="step-nav"><a class="btn btn-ghost" href="menu.html">Back to menu</a></div>
+        </section>
+        ${summaryPanel()}
+      </div>`;
+  }
+
   renderHead();
-  if (order.status === "Awaiting Confirmation" && order.message) renderDone();
-  else renderPay();
+  if (order.status === "Awaiting Confirmation" && order.message && order.py) renderDone();
+  else renderPlaced();
 });

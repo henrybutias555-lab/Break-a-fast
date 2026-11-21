@@ -27,7 +27,7 @@
 <script src="js/config.js?v=4615361c" defer></script>
 <script src="js/products.js?v=8b8feca8" defer></script>
 <script src="js/app.js?v=0b25682c" defer></script>
-<script src="js/checkout.js?v=84ce5cca" defer></script>
+<script src="js/checkout.js?v=6515cac1" defer></script>
 </head>
 <body class="no-float">
 <main id="main" class="wrap">
@@ -98,7 +98,7 @@
           <div class="field">
             <label>Payment method</label>
             <div class="choice" id="pay-methods"></div>
-            <div class="hint">You'll get the payment details and your order reference after you place the order.</div>
+            <div class="hint">We'll send you an invoice with the payment details after you place your order.</div>
           </div>
         </form>
         <div class="step-nav">
@@ -111,10 +111,10 @@
       <section class="panel step-pane" data-pane="3" hidden aria-labelledby="h-review">
         <h2 id="h-review">3. Review &amp; place order</h2>
         <div id="review"></div>
-        <label class="check" style="margin:14px 0"><input type="checkbox" id="agree"> <span>I confirm my order and details are correct. I understand I'll pay using my order reference, and that delivery fees (if any) are agreed separately. I agree to the <a href="terms.html#orders" target="_blank" rel="noopener">Terms &amp; Conditions</a>.</span></label>
+        <label class="check" style="margin:14px 0"><input type="checkbox" id="agree"> <span>I confirm my order and details are correct. I understand I'll receive an invoice to pay, and that delivery fees (if any) are agreed separately. I agree to the <a href="terms.html#orders" target="_blank" rel="noopener">Terms &amp; Conditions</a>.</span></label>
         <div class="step-nav">
           <button class="btn btn-ghost" type="button" data-next="2">← Edit details</button>
-          <button class="btn" type="button" id="place" disabled>Place order &amp; get payment details</button>
+          <button class="btn" type="button" id="place" disabled>Place order</button>
         </div>
       </section>
     </div>
@@ -122,7 +122,7 @@
     <aside class="panel summary" aria-labelledby="h-sum">
       <h2 id="h-sum">Order summary</h2>
       <div id="summary"></div>
-      <p class="small muted" style="margin:12px 0 0">🔒 You'll see the payment details only after your order is placed, so every payment is linked to an order reference.</p>
+      <p class="small muted" style="margin:12px 0 0">🔒 We send the payment details on your invoice, so every payment is linked to your order reference.</p>
     </aside>
   </div>
 </main>

@@ -238,7 +238,7 @@ function createApp(cfg) {
     if (o.c.no) L.push(`Notes: ${o.c.no}`);
     L.push(``, `*Payment: ${m.name}*`);
     if (o.py) { L.push(`Customer says they have sent ${money(o.tot)}`); if (o.py.txn) L.push(`Transaction ID: ${o.py.txn}`); if (o.py.from) L.push(`Paid from: ${o.py.from}${o.py.s ? " (" + o.py.s + ")" : ""}`); L.push(`Reference: ${o.ref}`); }
-    else L.push(`Not paid yet.`);
+    else L.push(`Awaiting invoice with payment details.`);
     return L.concat(verifyLine(url)).join("\n");
   }
   function eventText(e, url) {
@@ -358,6 +358,7 @@ function createApp(cfg) {
       biz: C.businessName, payRef: x.ref, site, receipt: R, doc: DOC,
       method: R ? method((isE && x.pr ? x.pr.pm : x.pm) || x.pm).name : (!isE ? method(x.pm).name : ""),
       paidOn: R && x.py && x.py.at ? niceDate(x.py.at.slice(0, 10)) : R && x.pr && x.pr.at ? niceDate(x.pr.at.slice(0, 10)) : niceDate(today),
+      pendDate: !isE && x.c.tm === PENDING ? x.c.d : "",
       confirmed: !!x.cf, reported: isE && x.pr ? x.pr.amt : 0, prKind: isE && x.pr ? x.pr.k : "", code
     };
     const pay = METHODS.map((m) => `<tr><td>${esc(m.name)}${m.kind === "bank" ? " · " + esc(m.bank) : ""}</td><td><b>${esc(m.number)}</b></td><td>${esc(m.accountName)}</td></tr>`).join("");
@@ -457,7 +458,7 @@ function draw(){
   $("sum").innerHTML=h;
   const n=$("noteIn").value.trim(); $("noteBox").hidden=!n; $("noteOut").textContent=n;
   const ph="233"+String(D.phone).replace(/^0/,"");
-  const due=D.isE?Math.round(tot*D.pct)/100:tot, link=D.site+"/pay.html?ref="+encodeURIComponent(D.payRef)+"&amt="+due+(D.isE?"&for=deposit&full="+tot+(D.code?"&t="+encodeURIComponent(D.code):""):"");
+  const due=D.isE?Math.round(tot*D.pct)/100:tot, link=D.site+"/pay.html?ref="+encodeURIComponent(D.payRef)+"&amt="+due+(D.isE?"&for=deposit&full="+tot:"")+(D.code?"&t="+encodeURIComponent(D.code):"")+(D.pendDate?"&d="+D.pendDate:"");
   const msg=(D.receipt&&D.isE) ? "Hello "+D.name.split(" ")[0]+", thank you! Here is your receipt for booking "+D.ref+" from "+D.biz+".\\nAmount received: "+fmt(D._paid)+" by "+D.method+".\\nBalance remaining: "+fmt(D._bal)+(D._bal>0?" (due "+D.balDue+")":"")+"\\n\\nThank you for booking with us!" : D.receipt ? "Hello "+D.name.split(" ")[0]+", thank you! Here is your receipt for order "+D.ref+" from "+D.biz+".\\nAmount paid: "+fmt(tot)+" by "+D.method+".\\nPaid on: "+D.paidOn+"\\n\\nWe'll be in touch about your "+(D.delivery?"delivery":"pick-up")+". Thank you for choosing us!" : "Hello "+D.name.split(" ")[0]+", here is your invoice "+D.ref+" from "+D.biz+".\\nTotal: "+fmt(tot)+(D.isE?"\\n"+D.pct+"% deposit to book: "+fmt(due)+"\\nBalance due: "+D.balDue:"")+"\\n\\nReference:\\n"+D.payRef+"\\n\\nTap to copy the reference and payment numbers:\\n"+link+"\\n\\nThank you!";
   $("wa").href="https://wa.me/"+ph+"?text="+encodeURIComponent(msg); $("wa2").href=$("wa").href;
   try{localStorage.setItem(key,JSON.stringify({recv:$("recv")?$("recv").value:"",prev:$("prev")?$("prev").value:"",fee:$("fee").value,disc:$("disc").value,quote:$("quote")?$("quote").value:"",noteIn:$("noteIn").value}))}catch(e){}
@@ -507,7 +508,7 @@ draw(); setTimeout(draw,300);
   function sendAlert(kind, x, url, inv) {
     if (!ALERT_URL || !ALERT_KEY) return Promise.resolve();
     let subject, title, color;
-    if (kind === "order") { subject = `🟡 New order ${x.ref} · ${money(x.tot)} · awaiting payment`; title = `New order ${x.ref}: awaiting payment`; color = "#c27a12"; }
+    if (kind === "order") { subject = `🟡 New order ${x.ref} · ${money(x.tot)} · send invoice`; title = `New order ${x.ref}: create and send the invoice`; color = "#c27a12"; }
     else if (kind === "paid") { subject = `🟢 Payment reported ${x.ref} · ${money(x.tot)} · ${method(x.pm).name}${x.py.txn ? " · TXN " + x.py.txn : ""} · ${x.c.tm}`; title = `Customer reported payment for ${x.ref}. Check your ${method(x.pm).name} SMS.`; color = "#2f7d4a"; }
     else if (kind === "confirmed") { const amt = x.t === "e" ? x.pr.amt : x.tot; subject = `✅ Payment confirmed ${x.ref} · ${money(amt)}`; title = `You confirmed ${money(amt)} received for ${x.ref}.`; color = "#2f7d4a"; }
     else if (kind === "eventpaid") { const k = { deposit: "Deposit", full: "Full payment", other: "Payment" }[x.pr.k] || "Payment"; subject = `🟢 ${k} reported ${x.ref} · ${money(x.pr.amt)} · ${method(x.pr.pm).name} · ${x.ty} ${niceDate(x.d)}`; title = `${k} of ${money(x.pr.amt)} reported for ${x.ref}. Check your ${method(x.pr.pm).name} SMS.`; color = "#2f7d4a"; }
@@ -550,7 +551,8 @@ draw(); setTimeout(draw,300);
       }
       if (req.method === "GET" && p.startsWith("/i/")) {
         const t = decodeURIComponent(p.slice(3)).replace(/[^0-9A-Za-z._-]/g, "");
-        return { ...out(200, invoicePage(t.includes(".") ? open(t) : openShort(t), false, t), "text/html"), headers: {} };
+        const xi = t.includes(".") ? open(t) : openShort(t);
+        return { ...out(200, invoicePage(xi, false, xi ? shortCode(xi) : ""), "text/html"), headers: {} };
       }
       if (req.method === "POST" && p.startsWith("/api/")) {
         if (limited(req.ip || "?")) return out(429, { error: "Too many requests. Please wait a few minutes." });
@@ -564,8 +566,9 @@ draw(); setTimeout(draw,300);
           return out(200, { order: o, token, verifyUrl: v, message: orderText(o, v) });
         }
         if (p === "/api/pay") {
-          const o = open(b.token);
-          need(o && o.t === "o", "This order could not be verified. Please place it again.");
+          const tk = String(b.t || "").replace(/[^0-9A-Za-z._-]/g, "");
+          const o = b.token ? open(b.token) : tk ? (tk.includes(".") ? open(tk) : openShort(tk)) : null;
+          need(o && o.t === "o", "This order could not be verified. Please message us on WhatsApp.");
           const txn = str(b.txn, 40), from = str(b.from, 40);   // optional (no longer asked on the site)
           if (o.c.tm === PENDING) {
             const tm = str(b.time, 40);

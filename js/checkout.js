@@ -186,7 +186,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <dt>Payment</dt><dd>${esc(methodName(d.payment))}</dd>
         </dl>
       </div>
-      <div class="notice"><b>What happens next:</b> when you place your order you'll get an <b>order reference</b>. Then you'll send <b>${money(Cart.total())}</b> by ${esc(methodName(d.payment))} using that reference, and confirm your payment with us on WhatsApp.</div>`;
+      <div class="notice"><b>What happens next:</b> when you place your order, we'll send you an <b>invoice on WhatsApp</b> with the payment details. After paying, you tap <b>"I've paid"</b> on the invoice link${d.time === "Time chosen after payment" ? " and choose your delivery time" : ""}, and we send your receipt.</div>`;
     $$("[data-goto]", $("#review")).forEach((b) => b.addEventListener("click", () => go(+b.dataset.goto)));
   }
   const agree = $("#agree"), place = $("#place");
@@ -209,7 +209,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || "Could not place your order.");
       const orders = store.get("baf_orders_v1", {});
-      orders[j.order.ref] = { ...j.order, token: j.token, verifyUrl: j.verifyUrl, status: "Pending Payment" };
+      orders[j.order.ref] = { ...j.order, token: j.token, verifyUrl: j.verifyUrl, message: j.message, status: "Awaiting Invoice" };
       store.set("baf_orders_v1", orders);
       Cart.clear();
       location.href = "order.html?ref=" + encodeURIComponent(j.order.ref);
