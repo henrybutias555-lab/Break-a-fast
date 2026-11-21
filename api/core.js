@@ -397,6 +397,8 @@ table.items td{padding:9px 6px;border-bottom:1px solid #f0e4d2;vertical-align:to
 .bar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:#3b1f14;padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:flex;gap:8px;box-shadow:0 -4px 16px rgba(0,0,0,.2)}
 .bar a,.bar button{flex:1;font:800 .95rem system-ui;padding:13px 10px;border-radius:999px;border:0;text-align:center;text-decoration:none;color:#fff;cursor:pointer}
 .bar .wa{background:#1fa855}.bar .pdfb{background:#a8174f}body{padding-bottom:84px}
+body.pdfmode .sheet{width:794px;max-width:none;margin:0;box-shadow:none;border-radius:0;padding:36px 40px}
+body.pdfmode .top,body.pdfmode .cols{display:flex}body.pdfmode .cols{display:grid;grid-template-columns:1fr 1fr}body.pdfmode .inv{text-align:right}
 @media print{body{background:#fff;padding-bottom:0}.bar{display:none}.tools{display:none}.sheet{box-shadow:none;margin:0;max-width:none;padding:0}@page{margin:14mm}}
 </style>
 <script src="${esc(site)}/assets/vendor/html2pdf.bundle.min.js" defer></script>
@@ -413,8 +415,8 @@ table.items td{padding:9px 6px;border-bottom:1px solid #f0e4d2;vertical-align:to
   <label>Paid earlier (GH₵)<input id="prev" autocomplete="off" type="number" min="0" step="1" inputmode="decimal" placeholder="0"></label>` : ""}
   ${data.custom ? `<label>Quoted price (GH₵)<input id="quote" autocomplete="off" type="number" min="0" step="1" inputmode="decimal" placeholder="Custom quote"></label>` : ""}
   <label>Note on invoice (optional)<textarea id="noteIn" autocomplete="off" rows="2" placeholder="e.g. Delivery to East Legon, set-up from 2pm"></textarea></label>
-  <div class="btns"><button id="pdf" type="button">⬇ Download PDF</button><a class="wa" id="wa" target="_blank" rel="noopener">Send to customer on WhatsApp</a><button id="print" type="button" style="background:#6f5547">Print</button></div>
-  <div style="font-size:.8rem;color:#6f5547" id="tip">Tip: download the PDF, then attach it in the WhatsApp chat. Send the PDF, not this page link.</div>
+  <div class="btns"><button id="share" type="button" style="background:#1fa855">📤 Share PDF on WhatsApp</button><button id="pdf" type="button">⬇ Download PDF</button><a class="wa" id="wa" target="_blank" rel="noopener" style="background:#6f5547">Message only</a><button id="print" type="button" style="background:#6f5547">Print</button></div>
+  <div style="font-size:.8rem;color:#6f5547" id="tip">Tap <b>Share PDF</b>, choose WhatsApp, then pick the customer. The PDF and message are sent together.</div>
 </div>
 <div class="sheet">
   <img class="wm" src="${LOGOS.watermark || esc(site) + "/assets/img/logo-watermark.jpg"}" alt="">
@@ -433,7 +435,7 @@ table.items td{padding:9px 6px;border-bottom:1px solid #f0e4d2;vertical-align:to
   ${R ? `<div class="box"><h3>Payment received</h3><table class="pay"><tr><td>Method</td><td><b>${esc(data.method)}</b></td></tr><tr><td>Reference</td><td><b>${esc(x.ref)}</b></td></tr><tr><td>Paid to</td><td>${esc(METHODS[0].accountName)}</td></tr></table></div><p style="margin-top:14px;font-weight:700;color:#3b1f14">${isE ? "Thank you for booking with us!" : "Thank you for your order!"}</p>` : `<div class="box"><h3>How to pay · use reference <b style="color:#a8174f">${esc(x.ref)}</b></h3><table class="pay">${pay}</table></div>`}
   <p class="terms">${esc(terms)}</p>
 </div>
-<div class="bar"><button class="pdfb" type="button" id="pdf2">⬇ PDF</button><a class="wa" id="wa2" target="_blank" rel="noopener">Send ${R ? "receipt" : "invoice"} to customer</a></div>
+<div class="bar"><button class="pdfb" type="button" id="pdf2">⬇ PDF</button><button class="wa" type="button" id="share2">📤 Share ${R ? "receipt" : "invoice"} PDF</button><a id="wa2" hidden></a></div>
 <script>
 const D=${JSON.stringify(data).replace(/</g, "\\u003c")};
 const $=(i)=>document.getElementById(i), fmt=(n)=>"GH₵"+Number(n).toLocaleString("en-US",{maximumFractionDigits:2});
@@ -468,15 +470,48 @@ document.querySelectorAll(".tools input,.tools textarea").forEach(i=>["input","c
 window.addEventListener("beforeprint",draw);
 $("wa").addEventListener("click",draw); $("wa2").addEventListener("click",draw); $("pdf2").addEventListener("click",()=>$("pdf").click());            // runs before the link opens, so the message is always current
 $("print").addEventListener("click",()=>{draw();window.print()});
-$("pdf").addEventListener("click",async()=>{
-  draw(); const btn=$("pdf"), old=btn.textContent; btn.disabled=true; btn.textContent="Making PDF…";
+async function makePdf(kind){
+  draw(); if(!window.html2pdf) throw new Error("PDF tool not loaded");
+  const sheet=document.querySelector(".sheet"), y=window.scrollY;
+  window.scrollTo(0,0); document.body.classList.add("pdfmode"); document.querySelector('meta[name=viewport]').setAttribute("content","width=1000");
+  await new Promise(r=>setTimeout(r,60));
+  const w=sheet.offsetWidth, h=sheet.scrollHeight;
   try{
-    if(!window.html2pdf) throw new Error("PDF tool not loaded");
-    await html2pdf().set({margin:[8,8,8,8],filename:D.doc+"-"+D.ref+".pdf",image:{type:"jpeg",quality:0.96},html2canvas:{scale:2,useCORS:true,backgroundColor:"#ffffff"},jsPDF:{unit:"mm",format:"a4",orientation:"portrait"},pagebreak:{mode:["css","legacy"]}}).from(document.querySelector(".sheet")).save();
-    $("tip").textContent="PDF downloaded ("+D.doc+"-"+D.ref+".pdf). Attach it in the WhatsApp chat.";
-  }catch(e){ window.print(); }
-  btn.disabled=false; btn.textContent=old;
+    const w2=html2pdf().set({margin:0,filename:D.doc+"-"+D.ref+".pdf",image:{type:"jpeg",quality:0.95},
+      html2canvas:{scale:2,useCORS:true,backgroundColor:"#ffffff",scrollX:0,scrollY:0,windowWidth:1000},pagebreak:{mode:[]}}).from(sheet);
+    const cv=await w2.toCanvas().get("canvas");
+    const PW=595.28, PH=Math.ceil(PW*cv.height/cv.width)+1;   // one page, exactly the receipt's shape
+    const w3=html2pdf().set({margin:0,filename:D.doc+"-"+D.ref+".pdf",image:{type:"jpeg",quality:0.95},
+      jsPDF:{unit:"pt",format:[PW,PH],orientation:PH>=PW?"portrait":"landscape"},pagebreak:{mode:[]}}).from(cv,"canvas");
+    if(kind==="blob") return await w3.outputPdf("blob");
+    await w3.save(); return null;
+  } finally { document.body.classList.remove("pdfmode"); document.querySelector('meta[name=viewport]').setAttribute("content","width=device-width,initial-scale=1"); window.scrollTo(0,y); }
+}
+function busy(btn,txt){const old=btn.textContent;btn.disabled=true;btn.textContent=txt;return()=>{btn.disabled=false;btn.textContent=old;};}
+$("pdf").addEventListener("click",async()=>{
+  const done=busy($("pdf"),"Making PDF…");
+  try{ await makePdf("save"); $("tip").textContent="PDF downloaded ("+D.doc+"-"+D.ref+".pdf)."; }
+  catch(e){ window.print(); }
+  done();
 });
+async function sharePdf(btn){
+  const done=busy(btn,"Preparing…");
+  try{
+    const blob=await makePdf("blob");
+    const file=new File([blob],D.doc+"-"+D.ref+".pdf",{type:"application/pdf"});
+    const text=decodeURIComponent(($("wa").getAttribute("href")||"").split("?text=")[1]||"");
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],text,title:D.doc+" "+D.ref});
+    } else {
+      const u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download=file.name;document.body.appendChild(a);a.click();a.remove();
+      $("tip").textContent="Your phone can't share files directly here, so the PDF was downloaded. WhatsApp is opening: attach the PDF in the chat.";
+      setTimeout(()=>window.open($("wa").href,"_blank"),600);
+    }
+  }catch(e){ if(e&&e.name!=="AbortError") $("tip").textContent="Could not share: "+e.message; }
+  done();
+}
+$("share").addEventListener("click",()=>sharePdf($("share")));
+$("share2").addEventListener("click",()=>sharePdf($("share2")));
 draw(); setTimeout(draw,300);
 </script></body></html>`;
   }
