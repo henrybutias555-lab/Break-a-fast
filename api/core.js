@@ -307,8 +307,10 @@ function createApp(cfg) {
     while (n > 0) { d.setUTCDate(d.getUTCDate() - 1); const w = d.getUTCDay(); if (w !== 0 && w !== 6) n--; }
     return d.toISOString().slice(0, 10);
   }
-  function invoicePage(x) {
-    if (!x) return verifyPage(null).replace("Order verification", "Invoice");
+  function invoicePage(x, asReceipt = false) {
+    if (!x) return verifyPage(null).replace("Order verification", asReceipt ? "Receipt" : "Invoice");
+    const R = asReceipt && x.t === "o";      // receipts are for shop orders after payment is reported
+    const DOC = R ? "Receipt" : "Invoice";
     const site = ALLOWED_ORIGINS[0] || "";
     const isE = x.t === "e";
     const today = ghanaToday();
@@ -321,7 +323,8 @@ function createApp(cfg) {
       ref: x.ref, isE, name, phone, lines, pct: C.eventDepositPercent,
       balDue: isE ? (balDue > today ? niceDate(balDue) : "On confirmation of booking") : "",
       paid: !isE && !!x.py, delivery: !isE && x.c.f === "Delivery", custom: isE && !x.tot,
-      biz: C.businessName, payRef: x.ref, site
+      biz: C.businessName, payRef: x.ref, site, receipt: R, doc: DOC,
+      method: !isE ? method(x.pm).name : "", paidOn: R && x.py && x.py.at ? niceDate(x.py.at.slice(0, 10)) : niceDate(today)
     };
     const pay = METHODS.map((m) => `<tr><td>${esc(m.name)}${m.kind === "bank" ? " · " + esc(m.bank) : ""}</td><td><b>${esc(m.number)}</b></td><td>${esc(m.accountName)}</td></tr>`).join("");
     const when = isE ? `${esc(x.ty)} · ${esc(niceDate(x.d))}` : `${esc(x.c.f)} · ${esc(niceDate(x.c.d))}, ${esc(x.c.tm)}`;
@@ -329,9 +332,10 @@ function createApp(cfg) {
     const menu = isE && (x.pi || []).length ? `<h3>Menu choices</h3><ul class="menu">${x.pi.map((p) => `<li><b>${esc(p[0])}:</b> ${esc(p[1].length ? p[1].join(", ") : "to be suggested")}</li>`).join("")}<li><b>Bar set-up</b></li></ul>` : "";
     const terms = isE
       ? `Booking is valid once ${C.eventDepositPercent}% is paid. Full payment is due at least 14 working days before the event (or on confirmation for later bookings). Transport is not included in package prices. No refund on cancellation except force majeure (40% of the amount paid refunded). Prices may change after 2–3 months.`
+      : R ? `This receipt confirms payment for order ${x.ref}. For questions, call or WhatsApp ${C.phone} quoting your reference.`
       : `Orders are prepared once full payment is confirmed. Delivery fee depends on location. Please quote the reference when paying.`;
     return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
-<title>Invoice ${esc(x.ref)} | Break-a-Fast</title><style>
+<title>${DOC} ${esc(x.ref)} | Break-a-Fast</title><style>
 *{box-sizing:border-box}body{margin:0;font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;background:#efe6d8;color:#2a1710}
 .tools{max-width:820px;margin:16px auto 0;padding:14px 16px;background:#fff;border-radius:14px;display:grid;gap:10px}
 .tools h2{margin:0;font-size:1rem;color:#3b1f14}.tools .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -358,7 +362,8 @@ table.items td{padding:9px 6px;border-bottom:1px solid #f0e4d2;vertical-align:to
 <script src="${esc(site)}/assets/vendor/html2pdf.bundle.min.js" defer></script>
 </head><body>
 <div class="tools">
-  <h2>Prepare invoice ${esc(x.ref)}</h2>
+  <h2>Prepare ${DOC.toLowerCase()} ${esc(x.ref)}</h2>
+  ${R ? `<div style="background:#fff7e6;border:1px solid #f1d39a;border-radius:10px;padding:8px 10px;font-size:.85rem"><b>Before sending:</b> check your ${esc(method(x.pm).name)} SMS shows the money with reference <b>${esc(x.ref)}</b>. Only send a receipt once the payment has arrived.</div>` : ""}
   <div class="row">
     <label>${isE ? "Transport (GH₵)" : data.delivery ? "Delivery fee (GH₵)" : "Extra charge (GH₵)"}<input id="fee" autocomplete="off" type="number" min="0" step="1" inputmode="decimal" placeholder="0"></label>
     <label>Discount (GH₵)<input id="disc" autocomplete="off" type="number" min="0" step="1" inputmode="decimal" placeholder="0"></label>
@@ -372,7 +377,7 @@ table.items td{padding:9px 6px;border-bottom:1px solid #f0e4d2;vertical-align:to
   <img class="wm" src="${LOGOS.watermark || esc(site) + "/assets/img/logo-watermark.jpg"}" alt="">
   <div class="top">
     <div class="brand"><img src="${LOGOS.header || esc(site) + "/assets/img/logo-invoice.jpg"}" alt=""><div><b>${esc(C.businessName)}</b><span>${esc(C.tagline)}<br>${esc(C.phone)} / ${esc(C.altPhone)}</span></div></div>
-    <div class="inv"><h1>INVOICE</h1><div>No. <b>${esc(x.ref)}</b></div><div>Date: ${esc(niceDate(today))}</div>${data.paid ? `<div class="stamp">PAYMENT REPORTED</div>` : ""}</div>
+    <div class="inv"><h1>${DOC.toUpperCase()}</h1><div>${R ? "For order" : "No."} <b>${esc(x.ref)}</b></div><div>${R ? "Paid on" : "Date"}: ${esc(R ? data.paidOn : niceDate(today))}</div>${R ? `<div class="stamp">PAID</div>` : ""}</div>
   </div>
   <div class="cols">
     <div><h3>Bill to</h3><b>${esc(name)}</b><br>${esc(phone)}<br>${where}</div>
@@ -382,7 +387,7 @@ table.items td{padding:9px 6px;border-bottom:1px solid #f0e4d2;vertical-align:to
   <div class="sum" id="sum"></div>
   ${menu}
   <div class="box" id="noteBox" hidden><h3>Note</h3><div class="note" id="noteOut"></div></div>
-  <div class="box"><h3>How to pay · use reference <b style="color:#a8174f">${esc(x.ref)}</b></h3><table class="pay">${pay}</table></div>
+  ${R ? `<div class="box"><h3>Payment received</h3><table class="pay"><tr><td>Method</td><td><b>${esc(method(x.pm).name)}</b></td></tr><tr><td>Reference</td><td><b>${esc(x.ref)}</b></td></tr><tr><td>Paid to</td><td>${esc(method(x.pm).accountName)}</td></tr></table></div><p style="margin-top:14px;font-weight:700;color:#3b1f14">Thank you for your order!</p>` : `<div class="box"><h3>How to pay · use reference <b style="color:#a8174f">${esc(x.ref)}</b></h3><table class="pay">${pay}</table></div>`}
   <p class="terms">${esc(terms)}</p>
 </div>
 <script>
@@ -400,12 +405,13 @@ function draw(){
   const sub=rows.reduce((s,r)=>s+r[3],0), tot=Math.max(0,sub-disc);
   let h="<div><span>Subtotal</span><span>"+fmt(sub)+"</span></div>"+(disc?"<div><span>Discount</span><span>−"+fmt(disc)+"</span></div>":"")+"<div class=tot><span>Total</span><span>"+fmt(tot)+"</span></div>";
   if(D.isE){const dep=Math.round(tot*D.pct)/100; h+="<div class=dep><span>"+D.pct+"% deposit to book</span><span>"+fmt(dep)+"</span></div><div><span>Balance</span><span>"+fmt(tot-dep)+"</span></div><div><span>Balance due</span><span>"+e(D.balDue)+"</span></div>"; if(!fee) h+="<div style='font-size:.8rem;color:#6f5547'><span>Transport to be added</span></div>";}
+  else if(D.receipt) h+="<div class=dep><span>Amount paid</span><span>"+fmt(tot)+"</span></div><div><span>Paid by</span><span>"+e(D.method)+"</span></div><div><span>Balance</span><span>"+fmt(0)+"</span></div>";
   else h+="<div><span>Status</span><span>"+(D.paid?"Customer reports paid":"Payment due before preparation")+"</span></div>";
   $("sum").innerHTML=h;
   const n=$("noteIn").value.trim(); $("noteBox").hidden=!n; $("noteOut").textContent=n;
   const ph="233"+String(D.phone).replace(/^0/,"");
   const due=D.isE?Math.round(tot*D.pct)/100:tot, link=D.site+"/pay.html?ref="+encodeURIComponent(D.payRef)+"&amt="+due+(D.isE?"&for=deposit":"");
-  const msg="Hello "+D.name.split(" ")[0]+", here is your invoice "+D.ref+" from "+D.biz+".\\nTotal: "+fmt(tot)+(D.isE?"\\n"+D.pct+"% deposit to book: "+fmt(due)+"\\nBalance due: "+D.balDue:"")+"\\n\\nReference:\\n"+D.payRef+"\\n\\nTap to copy the reference and payment numbers:\\n"+link+"\\n\\nThank you!";
+  const msg=D.receipt ? "Hello "+D.name.split(" ")[0]+", thank you! Here is your receipt for order "+D.ref+" from "+D.biz+".\\nAmount paid: "+fmt(tot)+" by "+D.method+".\\nPaid on: "+D.paidOn+"\\n\\nWe'll be in touch about your "+(D.delivery?"delivery":"pick-up")+". Thank you for choosing us!" : "Hello "+D.name.split(" ")[0]+", here is your invoice "+D.ref+" from "+D.biz+".\\nTotal: "+fmt(tot)+(D.isE?"\\n"+D.pct+"% deposit to book: "+fmt(due)+"\\nBalance due: "+D.balDue:"")+"\\n\\nReference:\\n"+D.payRef+"\\n\\nTap to copy the reference and payment numbers:\\n"+link+"\\n\\nThank you!";
   $("wa").href="https://wa.me/"+ph+"?text="+encodeURIComponent(msg);
   try{localStorage.setItem(key,JSON.stringify({fee:$("fee").value,disc:$("disc").value,quote:$("quote")?$("quote").value:"",noteIn:$("noteIn").value}))}catch(e){}
 }
@@ -418,8 +424,8 @@ $("pdf").addEventListener("click",async()=>{
   draw(); const btn=$("pdf"), old=btn.textContent; btn.disabled=true; btn.textContent="Making PDF…";
   try{
     if(!window.html2pdf) throw new Error("PDF tool not loaded");
-    await html2pdf().set({margin:[8,8,8,8],filename:"Invoice-"+D.ref+".pdf",image:{type:"jpeg",quality:0.96},html2canvas:{scale:2,useCORS:true,backgroundColor:"#ffffff"},jsPDF:{unit:"mm",format:"a4",orientation:"portrait"},pagebreak:{mode:["css","legacy"]}}).from(document.querySelector(".sheet")).save();
-    $("tip").textContent="PDF downloaded (Invoice-"+D.ref+".pdf). Attach it in the WhatsApp chat.";
+    await html2pdf().set({margin:[8,8,8,8],filename:D.doc+"-"+D.ref+".pdf",image:{type:"jpeg",quality:0.96},html2canvas:{scale:2,useCORS:true,backgroundColor:"#ffffff"},jsPDF:{unit:"mm",format:"a4",orientation:"portrait"},pagebreak:{mode:["css","legacy"]}}).from(document.querySelector(".sheet")).save();
+    $("tip").textContent="PDF downloaded ("+D.doc+"-"+D.ref+".pdf). Attach it in the WhatsApp chat.";
   }catch(e){ window.print(); }
   btn.disabled=false; btn.textContent=old;
 });
@@ -447,7 +453,7 @@ draw(); setTimeout(draw,300);
     return `<div style="font-family:Arial,sans-serif;max-width:560px">
       <div style="background:${color};color:#fff;padding:14px 16px;border-radius:10px;font-size:18px;font-weight:bold">${esc(title)}</div>
       <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:14px">${rows}</table>
-      <p style="margin-top:14px">${inv ? `<a href="${esc(inv)}" style="background:#a8174f;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;margin-right:8px">📄 Create invoice</a>` : ""}<a href="${esc(url)}" style="background:#3b1f14;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Open verify page</a></p>
+      <p style="margin-top:14px">${inv ? `<a href="${esc(inv)}" style="background:#a8174f;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;margin-right:8px">${inv.includes("/r/") ? "🧾 Create receipt" : "📄 Create invoice"}</a>` : ""}<a href="${esc(url)}" style="background:#3b1f14;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Open verify page</a></p>
       <p style="color:#888;font-size:12px">This alert comes from the Break-a-Fast order server, not from the customer, so the details above are exactly what was placed on the website.</p></div>`;
   }
   function sendAlert(kind, x, url, inv) {
@@ -488,6 +494,10 @@ draw(); setTimeout(draw,300);
         const t = decodeURIComponent(p.slice(3)).replace(/[^0-9A-Za-z._-]/g, "");
         return { ...out(200, verifyPage(t.includes(".") ? open(t) : openShort(t), t), "text/html"), headers: {} };
       }
+      if (req.method === "GET" && p.startsWith("/r/")) {
+        const t = decodeURIComponent(p.slice(3)).replace(/[^0-9A-Za-z._-]/g, "");
+        return { ...out(200, invoicePage(t.includes(".") ? open(t) : openShort(t), true), "text/html"), headers: {} };
+      }
       if (req.method === "GET" && p.startsWith("/i/")) {
         const t = decodeURIComponent(p.slice(3)).replace(/[^0-9A-Za-z._-]/g, "");
         return { ...out(200, invoicePage(t.includes(".") ? open(t) : openShort(t)), "text/html"), headers: {} };
@@ -516,7 +526,7 @@ draw(); setTimeout(draw,300);
           if (b.payment && method(b.payment)) o.pm = b.payment;
           o.py = { txn, from, s: str(b.sender, 80), at: new Date().toISOString() };
           const token = seal(o), v = `${base}/v/${shortCode(o)}`;
-          waits.push(sendAlert("paid", o, v, `${base}/i/${token}`));
+          waits.push(sendAlert("paid", o, v, `${base}/r/${token}`));
           return out(200, { order: o, token, verifyUrl: v, message: orderText(o, v) });
         }
         if (p === "/api/event") {
