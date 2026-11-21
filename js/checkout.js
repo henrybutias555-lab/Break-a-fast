@@ -73,30 +73,28 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!form.date.value) form.date.value = form.date.min;
   BAF.dayMonthYear(form.date);
 
-  /* ---------- time slots: hide ones already past for today (Ghana time = GMT) ---------- */
-  const SLOT_END = [12, 16, 19], PREP_HOURS = 1;
+  /* ---------- one-hour time slots; past ones for today are removed (Ghana time = GMT) ---------- */
+  const OH = C.orderHours || { open: 8, close: 19, prepHours: 1 };
+  const hr = (h) => (h === 12 ? "12pm" : h > 12 ? h - 12 + "pm" : h + "am");
+  const SLOTS = []; for (let h = OH.open; h < OH.close; h++) SLOTS.push({ label: `${hr(h)} to ${hr(h + 1)}`, start: h });
   const slotNote = document.createElement("div");
   slotNote.className = "hint"; slotNote.id = "slot-note";
   form.time.after(slotNote);
-  const labels = Array.from(form.time.options, (o) => o.value);
   function updateSlots() {
     const now = new Date(), todayIso = now.toISOString().slice(0, 10);
     const h = now.getUTCHours() + now.getUTCMinutes() / 60;
     const isToday = form.date.value === todayIso;
-    let open = 0;
-    Array.from(form.time.options).forEach((o, i) => {
-      const ok = !isToday || h <= SLOT_END[i] - PREP_HOURS;
-      o.disabled = !ok; o.textContent = labels[i] + (ok ? "" : " (closed for today)");
-      if (ok) open++;
-    });
-    if (isToday && open === 0) {
-      const t = new Date(now.getTime() + 864e5).toISOString().slice(0, 10);
-      form.date.setDate(t);              // re-runs updateSlots via the change event
+    const open = SLOTS.filter((s) => !isToday || s.start >= h + OH.prepHours);
+    if (isToday && !open.length) {
+      form.date.setDate(new Date(now.getTime() + 864e5).toISOString().slice(0, 10)); // re-runs via change event
       slotNote.textContent = "Today's time slots have closed, so we've moved your order to tomorrow.";
       return;
     }
-    if (form.time.selectedOptions[0]?.disabled) form.time.value = labels[Array.from(form.time.options).findIndex((o) => !o.disabled)];
-    slotNote.textContent = isToday && open < labels.length ? "Earlier time slots have passed for today." : (slotNote.textContent.startsWith("Today's") && form.date.value !== todayIso ? slotNote.textContent : "");
+    const keep = form.time.value;
+    form.time.innerHTML = open.map((s) => `<option value="${s.label}">${s.label}</option>`).join("");
+    if (open.some((s) => s.label === keep)) form.time.value = keep;
+    if (isToday) slotNote.textContent = open.length < SLOTS.length ? `Earliest available today: ${open[0].label}.` : "";
+    else if (!slotNote.textContent.startsWith("Today's")) slotNote.textContent = "";
   }
   form.date.addEventListener("change", updateSlots);
   updateSlots();

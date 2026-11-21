@@ -49,11 +49,12 @@ function createApp(cfg) {
     const w = new Wr();
     const isE = x.t === "e", hasPay = !!x.py, phone = isE ? x.p : x.c.p;
     const fromIsPhone = hasPay && x.py.from.replace(/\D/g, "") === phone;
-    w.u8(1); // version
+    w.u8(2); // version (2 = time slot stored in its own byte)
     w.u32(refNum(x.ref));
-    w.u8((isE ? 1 : 0) | (pmIdx(x.pm) << 1) | ((!isE && x.c.f === "Pick-up" ? 1 : 0) << 3) | ((isE ? 0 : Math.max(0, TIMES.indexOf(x.c.tm))) << 4) | ((hasPay ? 1 : 0) << 6) | ((fromIsPhone ? 1 : 0) << 7));
+    w.u8((isE ? 1 : 0) | (pmIdx(x.pm) << 1) | ((!isE && x.c.f === "Pick-up" ? 1 : 0) << 3) | ((hasPay ? 1 : 0) << 6) | ((fromIsPhone ? 1 : 0) << 7));
     w.u24(Math.round((Date.parse(x.at) - EPOCH) / 60000));
     w.u16(days(isE ? x.d : x.c.d));
+    w.u8(isE ? 0 : Math.max(0, ALL_SLOTS.findIndex((t) => t.label === x.c.tm)));
     w.phone(phone);
     w.u32(Math.round(x.tot * 100));
     if (isE) {
@@ -78,13 +79,15 @@ function createApp(cfg) {
   }
   function openShort(code) {
     const buf = fromB62(code);
-    if (!buf || buf.length < 20 || buf[0] !== 1) return null;
+    if (!buf || buf.length < 20 || (buf[0] !== 1 && buf[0] !== 2)) return null;
     const body = buf.subarray(0, buf.length - 9), mac = buf.subarray(buf.length - 9);
     const good = crypto.createHmac("sha256", SECRET).update(body).digest().subarray(0, 9);
     if (!crypto.timingSafeEqual(good, mac)) return null;
     try {
-      const r = new Rd(body); r.u8();
-      const refN = r.u32(), fl = r.u8(), at = new Date(EPOCH + r.u24() * 60000).toISOString(), d = isoDay(r.u16()), phone = r.phone(), tot = r.u32() / 100;
+      const r = new Rd(body); const ver = r.u8();
+      const refN = r.u32(), fl = r.u8(), at = new Date(EPOCH + r.u24() * 60000).toISOString(), d = isoDay(r.u16());
+      const tmLabel = ver >= 2 ? (ALL_SLOTS[r.u8()] || {}).label || "" : TIMES[(fl >> 4) & 3];
+      const phone = r.phone(), tot = r.u32() / 100;
       const isE = fl & 1, pm = (METHODS[(fl >> 1) & 3] || METHODS[0]).id;
       if (isE) {
         const fi = r.u8(), f = FLAT_PKGS[fi], gu = String(r.u16()), mask = r.u8(), ty = EVENT_TYPES[r.u8()] || "Other", n = r.str(), v = r.str();
@@ -96,7 +99,7 @@ function createApp(cfg) {
         const p = PRODUCTS[r.u8()], of = r.u8(), q = r.u8(), o = p && p.options[of >> 4], fv = p && (of & 15) ? (p.flavours || [])[(of & 15) - 1] : "";
         it.push([p ? p.name : "Item no longer on menu", o ? o.label : "", fv || "", q, o ? o.price * q : null]);
       }
-      const n = r.str(), o = { t: "o", ref: C.orderPrefix + "-" + refStr(refN), at, it, tot, c: { n, p: phone, f: fl & 8 ? "Pick-up" : "Delivery", d, tm: TIMES[(fl >> 4) & 3] }, pm };
+      const n = r.str(), o = { t: "o", ref: C.orderPrefix + "-" + refStr(refN), at, it, tot, c: { n, p: phone, f: fl & 8 ? "Pick-up" : "Delivery", d, tm: tmLabel }, pm };
       if (fl & 64) { const txn = r.str(); o.py = { txn, from: fl & 128 ? phone : r.str() }; }
       return o;
     } catch (e) { return null; }
@@ -123,13 +126,19 @@ function createApp(cfg) {
   const need = (cond, msg) => { if (!cond) throw new Bad(msg); };
 
   /* ---------- builders ---------- */
-  const TIMES = ["Morning (8am to 12pm)", "Afternoon (12pm to 4pm)", "Evening (4pm to 7pm)"];
-  const SLOT_END = [12, 16, 19];          // hour each slot ends (Ghana time = GMT)
-  const PREP_HOURS = 1;                   // a slot closes this long before it ends
-  const slotOpen = (iso, i) => {
+  // One-hour slots (Ghana time = GMT). Legacy 3-slot labels kept so old links/orders still read.
+  const OH = C.orderHours || { open: 8, close: 19, prepHours: 1 };
+  const hr = (h) => (h === 12 ? "12pm" : h > 12 ? h - 12 + "pm" : h + "am");
+  const HOURLY = []; for (let h = OH.open; h < OH.close; h++) HOURLY.push({ label: `${hr(h)} to ${hr(h + 1)}`, start: h });
+  const LEGACY = [{ label: "Morning (8am to 12pm)", start: 8 }, { label: "Afternoon (12pm to 4pm)", start: 12 }, { label: "Evening (4pm to 7pm)", start: 16 }];
+  const TIMES = LEGACY.map((t) => t.label);              // v1 short-code table (do not change)
+  const ALL_SLOTS = [...HOURLY, ...LEGACY];
+  const slotOpen = (iso, label) => {
+    const s = HOURLY.find((t) => t.label === label);
+    if (!s) return false;                                 // new orders must use hourly slots
     if (iso !== ghanaToday()) return true;
     const now = new Date(); const h = now.getUTCHours() + now.getUTCMinutes() / 60;
-    return h <= SLOT_END[i] - PREP_HOURS;
+    return s.start >= h + OH.prepHours;
   };
   function buildOrder(b) {
     need(Array.isArray(b.items) && b.items.length >= 1 && b.items.length <= 30, "Your cart is empty.");
@@ -151,8 +160,8 @@ function createApp(cfg) {
     need(phone, "Please enter a valid Ghana phone number.");
     need(ful === "Pick-up" || address.length >= 5, "Please enter your delivery address.");
     need(validDate(c.date), "Please choose a valid date.");
-    need(TIMES.includes(c.time), "Please choose a time.");
-    need(slotOpen(c.date, TIMES.indexOf(c.time)), "That time has already passed for today. Please choose a later time or another day.");
+    need(HOURLY.some((t) => t.label === c.time), "Please choose a time.");
+    need(slotOpen(c.date, c.time), "That time has already passed for today. Please choose a later time or another day.");
     need(method(b.payment), "Please choose a payment method.");
     return {
       t: "o", ref: makeRef(C.orderPrefix), at: new Date().toISOString(),

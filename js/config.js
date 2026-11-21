@@ -57,6 +57,10 @@ window.BAF_CONFIG = {
     ? ""
     : "", // e.g. "https://orders.break-a-fast.workers.dev" (Cloudflare, currently paused)
 
+  // Order time slots (Ghana time). One-hour slots from "open" to "close".
+  // A slot for today disappears once it starts within "prepHours".
+  orderHours: { open: 8, close: 19, prepHours: 1 },
+
   // Events & catering bookings
   eventDepositPercent: 40,
 
