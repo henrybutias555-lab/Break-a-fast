@@ -316,7 +316,7 @@ function createApp(cfg) {
       ref: x.ref, isE, name, phone, lines, pct: C.eventDepositPercent,
       balDue: isE ? (balDue > today ? niceDate(balDue) : "On confirmation of booking") : "",
       paid: !isE && !!x.py, delivery: !isE && x.c.f === "Delivery", custom: isE && !x.tot,
-      biz: C.businessName, payRef: x.ref
+      biz: C.businessName, payRef: x.ref, site
     };
     const pay = METHODS.map((m) => `<tr><td>${esc(m.name)}${m.kind === "bank" ? " · " + esc(m.bank) : ""}</td><td><b>${esc(m.number)}</b></td><td>${esc(m.accountName)}</td></tr>`).join("");
     const when = isE ? `${esc(x.ty)} · ${esc(niceDate(x.d))}` : `${esc(x.c.f)} · ${esc(niceDate(x.c.d))}, ${esc(x.c.tm)}`;
@@ -333,7 +333,8 @@ function createApp(cfg) {
 .tools label{font-size:.85rem;font-weight:700;color:#6f5547;display:grid;gap:4px}
 .tools input,.tools textarea{font:inherit;padding:10px;border:2px solid #e8d6bd;border-radius:10px;width:100%}
 .btns{display:flex;flex-wrap:wrap;gap:8px}.btns button,.btns a{font:700 .95rem system-ui;padding:11px 16px;border-radius:999px;border:0;cursor:pointer;text-decoration:none;color:#fff;background:#3b1f14}.btns .wa{background:#1fa855}
-.sheet{max-width:820px;margin:16px auto 40px;background:#fff;padding:36px 40px;border-radius:6px;box-shadow:0 6px 24px rgba(0,0,0,.08)}
+.sheet{position:relative;max-width:820px;margin:16px auto 40px;background:#fff;padding:36px 40px;border-radius:6px;box-shadow:0 6px 24px rgba(0,0,0,.08);overflow:hidden}
+.sheet>*{position:relative;z-index:1}.sheet .wm{position:absolute;z-index:0;left:50%;top:50%;width:62%;max-width:460px;transform:translate(-50%,-50%);opacity:.07;pointer-events:none;border-radius:50%;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;border-bottom:3px solid #3b1f14;padding-bottom:16px}
 .brand{display:flex;gap:12px;align-items:center}.brand img{width:64px;height:64px;border-radius:50%}
 .brand b{display:block;font-size:1.15rem;color:#3b1f14}.brand span{font-size:.85rem;color:#6f5547}
@@ -361,6 +362,7 @@ table.items td{padding:9px 6px;border-bottom:1px solid #f0e4d2;vertical-align:to
   <div style="font-size:.8rem;color:#6f5547">Tip: save the PDF, then attach it in the WhatsApp chat. Send the PDF, not this page link.</div>
 </div>
 <div class="sheet">
+  <img class="wm" src="${esc(site)}/assets/img/logo.jpg" onerror="this.src='${esc(site)}/assets/img/logo-sm.jpg'" alt="">
   <div class="top">
     <div class="brand"><img src="${esc(site)}/assets/img/logo-sm.jpg" alt=""><div><b>${esc(C.businessName)}</b><span>${esc(C.tagline)}<br>${esc(C.phone)} / ${esc(C.altPhone)}</span></div></div>
     <div class="inv"><h1>INVOICE</h1><div>No. <b>${esc(x.ref)}</b></div><div>Date: ${esc(niceDate(today))}</div>${data.paid ? `<div class="stamp">PAYMENT REPORTED</div>` : ""}</div>
@@ -395,7 +397,8 @@ function draw(){
   $("sum").innerHTML=h;
   const n=$("noteIn").value.trim(); $("noteBox").hidden=!n; $("noteOut").textContent=n;
   const ph="233"+String(D.phone).replace(/^0/,"");
-  const msg="Hello "+D.name.split(" ")[0]+", here is your invoice "+D.ref+" from "+D.biz+".\\nTotal: "+fmt(tot)+(D.isE?"\\n"+D.pct+"% deposit to book: "+fmt(Math.round(tot*D.pct)/100)+"\\nBalance due: "+D.balDue:"")+"\\nPlease use reference "+D.payRef+" when paying. Thank you!";
+  const due=D.isE?Math.round(tot*D.pct)/100:tot, link=D.site+"/pay.html?ref="+encodeURIComponent(D.payRef)+"&amt="+due+(D.isE?"&for=deposit":"");
+  const msg="Hello "+D.name.split(" ")[0]+", here is your invoice "+D.ref+" from "+D.biz+".\\nTotal: "+fmt(tot)+(D.isE?"\\n"+D.pct+"% deposit to book: "+fmt(due)+"\\nBalance due: "+D.balDue:"")+"\\n\\nReference:\\n"+D.payRef+"\\n\\nTap to copy the reference and payment numbers:\\n"+link+"\\n\\nThank you!";
   $("wa").href="https://wa.me/"+ph+"?text="+encodeURIComponent(msg);
   try{localStorage.setItem(key,JSON.stringify({fee:$("fee").value,disc:$("disc").value,quote:$("quote")?$("quote").value:"",noteIn:$("noteIn").value}))}catch(e){}
 }

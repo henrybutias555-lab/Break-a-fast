@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Payment Details | Break-a-Fast Bistro and Bar</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#3b1f14">
+<link rel="icon" href="assets/img/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Nunito:wght@400;700;800&family=Pacifico&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css?v=151c68f9">
+<script src="js/config.js?v=4615361c" defer></script>
+<script src="js/products.js?v=8b8feca8" defer></script>
+<script src="js/app.js?v=0b25682c" defer></script>
+<style>
+  .copyrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+  .copyrow .lbl { font-size: .78rem; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); font-weight: 800; }
+  .copyrow .val { font-family: var(--font-head); font-size: 1.35rem; color: var(--brown); word-break: break-all; }
+  .copyrow .sub { font-size: .9rem; color: var(--muted); }
+  .copyrow .btn { flex: none; }
+  .stack { display: grid; gap: 10px; }
+</style>
+</head>
+<body class="no-float">
+<main id="main" class="wrap" style="max-width:640px">
+  <div class="page-head">
+    <h1>Payment details</h1>
+    <p>Tap <b>Copy</b> next to anything you need, then paste it into your MoMo or banking app.</p>
+  </div>
+  <div class="stack" id="top"></div>
+  <h2 style="margin-top:24px;font-size:1.3rem">Pay to any of these</h2>
+  <div class="stack" id="methods"></div>
+  <div class="notice warn" style="margin-top:16px"><b>Stay safe:</b> we will never ask for your PIN. Always use your reference so we can match your payment.</div>
+  <p style="margin-top:16px"><a class="btn btn-wa" data-wa="Hello Break-a-Fast! I have a question about my payment." target="_blank" rel="noopener">Questions? Chat on WhatsApp</a></p>
+</main>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const { esc, money, copyText, config: C } = BAF;
+    const q = new URLSearchParams(location.search);
+    const ref = (q.get("ref") || "").toUpperCase();
+    const okRef = /^(BAF|EVT)-[A-Z0-9]{4,8}$/.test(ref);
+    const amt = Number(q.get("amt"));
+    const what = q.get("for") === "deposit" ? "Deposit to book" : "Amount to pay";
+    const row = (lbl, val, copy, sub = "") => `<div class="copyrow"><div><div class="lbl">${esc(lbl)}</div><div class="val">${esc(val)}</div>${sub ? `<div class="sub">${sub}</div>` : ""}</div><button class="btn btn-sm" data-copy="${esc(copy)}">Copy</button></div>`;
+    document.getElementById("top").innerHTML =
+      (okRef ? row("Reference (use when paying)", ref, ref) : `<div class="notice">Please use the reference from your invoice when paying.</div>`) +
+      (amt > 0 && amt < 1e7 ? row(what, money(amt), String(amt)) : "");
+    document.getElementById("methods").innerHTML = C.paymentMethods.map((m) =>
+      row(m.kind === "bank" ? `${m.name} · ${m.bank}` : m.name, m.number, m.number, `Account name: <b>${esc(m.accountName)}</b>${m.ussd ? ` · Dial ${esc(m.ussd)}` : ""}`)).join("");
+    document.querySelectorAll("[data-copy]").forEach((b) => b.addEventListener("click", () => copyText(b.dataset.copy, b)));
+  });
+</script>
+</body>
+</html>
