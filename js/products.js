@@ -77,8 +77,7 @@ window.BAF_PRODUCTS = [
     short: "Sandwich, French toast, sausages, scrambled eggs, spring rolls, fruit & drinks.",
     description:
       "Includes: sandwich, French toast, toasted bread, sausages, scrambled eggs, spring rolls, fresh fruits, juice, milk, a collection of tea and water.",
-    image: "assets/img/menu/toast-eggs.jpg?v=a8337d2c",
-    gallery: ["assets/img/menu/toast-eggs.jpg?v=a8337d2c", "assets/img/meal-breakfast.jpg?v=77ef18a8"],
+    image: "assets/img/menu/pack-breakfast.jpg?v=ee872627",
     options: [{ label: "1 pack", price: 400 }]
   },
   {
@@ -88,8 +87,7 @@ window.BAF_PRODUCTS = [
     short: "Jollof, chicken drumsticks, spaghetti, salad, ice cream, fruit & drinks.",
     description:
       "Includes: jollof, chicken drumsticks, spaghetti, salad, ice cream, fruit, juice, fruit drink and water.",
-    image: "assets/img/menu/jollof-chicken.jpg?v=4629cf56",
-    gallery: ["assets/img/menu/jollof-chicken.jpg?v=4629cf56", "assets/img/meal-lunch1.jpg?v=e1d7af3a"],
+    image: "assets/img/menu/pack-lunch1.jpg?v=4d6a5703",
     options: [{ label: "1 pack", price: 400 }]
   },
   {
@@ -99,7 +97,7 @@ window.BAF_PRODUCTS = [
     short: "Fried rice and jollof, drumsticks, beef sauce, spaghetti, salad, ice cream & drinks.",
     description:
       "Includes: fried rice, jollof rice, chicken drumsticks, beef sauce, spaghetti, salad, fruits, ice cream, natural juice, fruit drink and water.",
-    image: "assets/img/meal-lunch2.jpg?v=ebb104e9",
+    image: "assets/img/menu/pack-lunch2.jpg?v=bf65d04d",
     options: [{ label: "1 pack", price: 550 }]
   }
 ];
