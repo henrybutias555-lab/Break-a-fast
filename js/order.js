@@ -108,13 +108,13 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   const PENDING = "Time chosen after payment";
-  const OH = C.orderHours || { open: 8, close: 19, prepHours: 1 };
+  const OH = Object.assign({ open: 8, close: 19, sameDayLeadHours: 4, sameDayMaxSlots: 3 }, C.orderHours);
   const hr = (h) => (h === 12 ? "12pm" : h > 12 ? h - 12 + "pm" : h + "am");
   function openSlots(iso) {
     const out = [], now = new Date(), today = now.toISOString().slice(0, 10), h = now.getUTCHours() + now.getUTCMinutes() / 60;
     if (iso < today) return out;
-    for (let s = OH.open; s < OH.close; s++) if (iso !== today || s >= h + OH.prepHours) out.push(`${hr(s)} to ${hr(s + 1)}`);
-    return out;
+    for (let s = OH.open; s < OH.close; s++) if (iso !== today || s >= h + OH.sameDayLeadHours) out.push(`${hr(s)} to ${hr(s + 1)}`);
+    return iso === today ? out.slice(0, OH.sameDayMaxSlots) : out;
   }
 
   function renderConfirm() {

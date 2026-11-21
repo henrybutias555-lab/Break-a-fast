@@ -127,7 +127,7 @@ function createApp(cfg) {
 
   /* ---------- builders ---------- */
   // One-hour slots (Ghana time = GMT). Legacy 3-slot labels kept so old links/orders still read.
-  const OH = C.orderHours || { open: 8, close: 19, prepHours: 1 };
+  const OH = Object.assign({ open: 8, close: 19, sameDayLeadHours: 4, sameDayMaxSlots: 3 }, C.orderHours);
   const hr = (h) => (h === 12 ? "12pm" : h > 12 ? h - 12 + "pm" : h + "am");
   const HOURLY = []; for (let h = OH.open; h < OH.close; h++) HOURLY.push({ label: `${hr(h)} to ${hr(h + 1)}`, start: h });
   const LEGACY = [{ label: "Morning (8am to 12pm)", start: 8 }, { label: "Afternoon (12pm to 4pm)", start: 12 }, { label: "Evening (4pm to 7pm)", start: 16 }];
@@ -140,7 +140,7 @@ function createApp(cfg) {
     if (iso < ghanaToday()) return false;
     if (iso !== ghanaToday()) return true;
     const now = new Date(); const h = now.getUTCHours() + now.getUTCMinutes() / 60;
-    return s.start >= h + OH.prepHours;
+    return HOURLY.filter((t) => t.start >= h + OH.sameDayLeadHours).slice(0, OH.sameDayMaxSlots).includes(s);
   };
   function buildOrder(b) {
     need(Array.isArray(b.items) && b.items.length >= 1 && b.items.length <= 30, "Your cart is empty.");
@@ -164,7 +164,7 @@ function createApp(cfg) {
     need(validDate(c.date), "Please choose a valid date.");
     if (c.date === ghanaToday() || c.time !== PENDING) {
       need(HOURLY.some((t) => t.label === c.time), "Please choose a time.");
-      need(slotOpen(c.date, c.time), "That time has already passed for today. Please choose a later time or another day.");
+      need(slotOpen(c.date, c.time), "That time is not available for same-day orders. Please choose one of the times shown, or another day.");
     }
     need(method(b.payment), "Please choose a payment method.");
     return {

@@ -74,7 +74,7 @@ document.addEventListener("DOMContentLoaded", () => {
   BAF.dayMonthYear(form.date);
 
   /* ---------- one-hour time slots; past ones for today are removed (Ghana time = GMT) ---------- */
-  const OH = C.orderHours || { open: 8, close: 19, prepHours: 1 };
+  const OH = Object.assign({ open: 8, close: 19, sameDayLeadHours: 4, sameDayMaxSlots: 3 }, C.orderHours);
   const hr = (h) => (h === 12 ? "12pm" : h > 12 ? h - 12 + "pm" : h + "am");
   const SLOTS = []; for (let h = OH.open; h < OH.close; h++) SLOTS.push({ label: `${hr(h)} to ${hr(h + 1)}`, start: h });
   const slotNote = document.createElement("div");
@@ -94,17 +94,16 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     timeField.hidden = false; form.time.after(slotNote);
-    const open = SLOTS.filter((s) => !isToday || s.start >= h + OH.prepHours);
+    const open = SLOTS.filter((s) => s.start >= h + OH.sameDayLeadHours).slice(0, OH.sameDayMaxSlots);
     if (isToday && !open.length) {
-      form.date.setDate(new Date(now.getTime() + 864e5).toISOString().slice(0, 10)); // re-runs via change event
       slotNote.textContent = "Today's time slots have closed, so we've moved your order to tomorrow.";
+      form.date.setDate(new Date(now.getTime() + 864e5).toISOString().slice(0, 10)); // re-runs via change event
       return;
     }
     const keep = form.time.value;
     form.time.innerHTML = open.map((s) => `<option value="${s.label}">${s.label}</option>`).join("");
     if (open.some((s) => s.label === keep)) form.time.value = keep;
-    if (isToday) slotNote.textContent = open.length < SLOTS.length ? `Earliest available today: ${open[0].label}.` : "";
-    else if (!slotNote.textContent.startsWith("Today's")) slotNote.textContent = "";
+    slotNote.textContent = `Same-day orders need about ${OH.sameDayLeadHours} hours to prepare. Earliest today: ${open[0].label}. For more times, choose a later date.`;
   }
   form.date.addEventListener("change", updateSlots);
   updateSlots();
