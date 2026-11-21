@@ -181,7 +181,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <dt>Name</dt><dd>${esc(d.name)}</dd>
           <dt>Phone</dt><dd>${esc(d.phone)}</dd>
           <dt>${esc(d.fulfilment)}</dt><dd>${d.fulfilment === "Delivery" ? esc(d.address) : "Pick-up point shared on WhatsApp"}</dd>
-          <dt>When</dt><dd>${niceDate(d.date)}, ${esc(d.time)}</dd>
+          <dt>When</dt><dd>${niceDate(d.date)}, ${esc(d.time === "Time chosen after payment" ? "time chosen after you pay" : d.time)}</dd>
           ${d.notes ? `<dt>Notes</dt><dd>${esc(d.notes)}</dd>` : ""}
           <dt>Payment</dt><dd>${esc(methodName(d.payment))}</dd>
         </dl>
