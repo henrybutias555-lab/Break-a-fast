@@ -80,10 +80,20 @@ document.addEventListener("DOMContentLoaded", () => {
   const slotNote = document.createElement("div");
   slotNote.className = "hint"; slotNote.id = "slot-note";
   form.time.after(slotNote);
+  const PENDING = "Time chosen after payment";
+  const timeField = form.time.closest(".field");
   function updateSlots() {
     const now = new Date(), todayIso = now.toISOString().slice(0, 10);
     const h = now.getUTCHours() + now.getUTCMinutes() / 60;
     const isToday = form.date.value === todayIso;
+    if (!isToday) {                       // future order: pay first, then pick the time
+      form.time.innerHTML = `<option value="${PENDING}">${PENDING}</option>`;
+      timeField.hidden = true;
+      slotNote.textContent = (slotNote.textContent.startsWith("Today's") ? slotNote.textContent + " " : "") + "You'll choose your delivery time after payment.";
+      timeField.after(slotNote);
+      return;
+    }
+    timeField.hidden = false; form.time.after(slotNote);
     const open = SLOTS.filter((s) => !isToday || s.start >= h + OH.prepHours);
     if (isToday && !open.length) {
       form.date.setDate(new Date(now.getTime() + 864e5).toISOString().slice(0, 10)); // re-runs via change event

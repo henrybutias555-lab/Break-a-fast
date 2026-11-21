@@ -132,10 +132,12 @@ function createApp(cfg) {
   const HOURLY = []; for (let h = OH.open; h < OH.close; h++) HOURLY.push({ label: `${hr(h)} to ${hr(h + 1)}`, start: h });
   const LEGACY = [{ label: "Morning (8am to 12pm)", start: 8 }, { label: "Afternoon (12pm to 4pm)", start: 12 }, { label: "Evening (4pm to 7pm)", start: 16 }];
   const TIMES = LEGACY.map((t) => t.label);              // v1 short-code table (do not change)
-  const ALL_SLOTS = [...HOURLY, ...LEGACY];
+  const PENDING = "Time chosen after payment";       // future-date orders pick their slot after paying
+  const ALL_SLOTS = [...HOURLY, ...LEGACY, { label: PENDING, start: -1 }];
   const slotOpen = (iso, label) => {
     const s = HOURLY.find((t) => t.label === label);
     if (!s) return false;                                 // new orders must use hourly slots
+    if (iso < ghanaToday()) return false;
     if (iso !== ghanaToday()) return true;
     const now = new Date(); const h = now.getUTCHours() + now.getUTCMinutes() / 60;
     return s.start >= h + OH.prepHours;
@@ -160,8 +162,10 @@ function createApp(cfg) {
     need(phone, "Please enter a valid Ghana phone number.");
     need(ful === "Pick-up" || address.length >= 5, "Please enter your delivery address.");
     need(validDate(c.date), "Please choose a valid date.");
-    need(HOURLY.some((t) => t.label === c.time), "Please choose a time.");
-    need(slotOpen(c.date, c.time), "That time has already passed for today. Please choose a later time or another day.");
+    if (c.date === ghanaToday() || c.time !== PENDING) {
+      need(HOURLY.some((t) => t.label === c.time), "Please choose a time.");
+      need(slotOpen(c.date, c.time), "That time has already passed for today. Please choose a later time or another day.");
+    }
     need(method(b.payment), "Please choose a payment method.");
     return {
       t: "o", ref: makeRef(C.orderPrefix), at: new Date().toISOString(),
@@ -227,7 +231,7 @@ function createApp(cfg) {
       `${o.c.f}${o.c.f === "Delivery" ? ": " + o.c.a : ""}`, `When: ${niceDate(o.c.d)}, ${o.c.tm}`];
     if (o.c.no) L.push(`Notes: ${o.c.no}`);
     L.push(``, `*Payment: ${m.name}*`);
-    if (o.py) L.push(`Customer says they sent ${money(o.tot)}`, `Transaction ID: ${o.py.txn}`, `Paid from: ${o.py.from}${o.py.s ? " (" + o.py.s + ")" : ""}`, `Reference: ${o.ref}`);
+    if (o.py) { L.push(`Customer says they have sent ${money(o.tot)}`); if (o.py.txn) L.push(`Transaction ID: ${o.py.txn}`); if (o.py.from) L.push(`Paid from: ${o.py.from}${o.py.s ? " (" + o.py.s + ")" : ""}`); L.push(`Reference: ${o.ref}`); }
     else L.push(`Not paid yet.`);
     return L.concat(verifyLine(url)).join("\n");
   }
@@ -259,9 +263,9 @@ function createApp(cfg) {
         ${row("Name", esc(x.c.n))}${row("Phone", esc(x.c.p))}${row(x.c.f, x.c.f === "Delivery" ? (x.c.a ? esc(x.c.a) : "Address is in the WhatsApp message") : "Pick-up")}
         ${row("When", esc(niceDate(x.c.d) + ", " + x.c.tm))}${x.c.no ? row("Notes", esc(x.c.no)) : ""}
         ${row("Payment method", esc(m ? m.name : x.pm))}
-        ${x.py ? row("Customer's Transaction ID", esc(x.py.txn)) + row("Paid from", esc(x.py.from + (x.py.s ? " (" + x.py.s + ")" : ""))) : row("Payment", "Not reported yet")}
+        ${x.py ? row("Payment", "Customer says they have paid") + (x.py.txn ? row("Customer's Transaction ID", esc(x.py.txn)) : "") + (x.py.from ? row("Paid from", esc(x.py.from + (x.py.s ? " (" + x.py.s + ")" : ""))) : "") : row("Payment", "Not reported yet")}
         </table>
-        <div class="todo"><b>Before you start this order:</b> check your ${esc(m ? m.name : "")} SMS/statement shows <b>${money(x.tot)}</b> received${x.py ? ` with Transaction ID <b>${esc(x.py.txn)}</b>` : ""} and reference <b>${esc(x.ref)}</b>. The website cannot see your account, so only your own SMS/statement proves the money arrived.</div>`;
+        <div class="todo"><b>Before you start this order:</b> check your ${esc(m ? m.name : "")} SMS/statement shows <b>${money(x.tot)}</b> received${x.py && x.py.txn ? ` with Transaction ID <b>${esc(x.py.txn)}</b>` : ""} and reference <b>${esc(x.ref)}</b>. The website cannot see your account, so only your own SMS/statement proves the money arrived.</div>`;
     } else {
       const m = method(x.pm);
       body = `<div class="ok">✔ GENUINE EVENT ENQUIRY</div><p class="sub">Created by the website on ${esc(new Date(x.at).toLocaleString("en-GB", { timeZone: "UTC" }))} GMT</p>
@@ -295,7 +299,7 @@ function createApp(cfg) {
         row("Name", esc(x.c.n)) + row("Phone", `<a href="tel:${esc(x.c.p)}">${esc(x.c.p)}</a> · <a href="https://wa.me/233${esc(x.c.p.slice(1))}">WhatsApp</a>`) +
         row(x.c.f, x.c.f === "Delivery" ? esc(x.c.a) : "Pick-up") + row("When", esc(niceDate(x.c.d) + ", " + x.c.tm)) + (x.c.no ? row("Notes", esc(x.c.no)) : "") +
         row("Payment method", esc(method(x.pm).name)) +
-        (x.py ? row("Transaction ID", `<b>${esc(x.py.txn)}</b>`) + row("Paid from", esc(x.py.from + (x.py.s ? " (" + x.py.s + ")" : ""))) : row("Payment", "Not reported yet"));
+        (x.py ? row("Payment", "Customer says they have paid") + (x.py.txn ? row("Transaction ID", `<b>${esc(x.py.txn)}</b>`) : "") + (x.py.from ? row("Paid from", esc(x.py.from + (x.py.s ? " (" + x.py.s + ")" : ""))) : "") : row("Payment", "Not reported yet"));
     } else {
       rows = row("Event", esc(x.ty)) + row("Date", esc(niceDate(x.d))) + row("Venue", esc(x.v || "To be shared")) + row("Package", esc((x.g ? x.g + " / " : "") + x.pk)) + row("Guests", esc(x.gu)) +
         x.ad.map((a) => row("Extra", `${esc(a[0])} · ${money(a[1])}`)).join("") +
@@ -313,7 +317,7 @@ function createApp(cfg) {
     if (!ALERT_URL || !ALERT_KEY) return Promise.resolve();
     let subject, title, color;
     if (kind === "order") { subject = `🟡 New order ${x.ref} · ${money(x.tot)} · awaiting payment`; title = `New order ${x.ref}: awaiting payment`; color = "#c27a12"; }
-    else if (kind === "paid") { subject = `🟢 Payment reported ${x.ref} · ${money(x.tot)} · ${method(x.pm).name} · TXN ${x.py.txn}`; title = `Customer reported payment for ${x.ref}. Check your ${method(x.pm).name} SMS.`; color = "#2f7d4a"; }
+    else if (kind === "paid") { subject = `🟢 Payment reported ${x.ref} · ${money(x.tot)} · ${method(x.pm).name}${x.py.txn ? " · TXN " + x.py.txn : ""} · ${x.c.tm}`; title = `Customer reported payment for ${x.ref}. Check your ${method(x.pm).name} SMS.`; color = "#2f7d4a"; }
     else { subject = `🎉 Event enquiry ${x.ref} · ${x.ty} · ${niceDate(x.d)}`; title = `New event enquiry ${x.ref}`; color = "#a8174f"; }
     const ctrl = new AbortController(); setTimeout(() => ctrl.abort(), 20000);
     return fetch(ALERT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ key: ALERT_KEY, subject, html: alertHtml(title, color, x, url) }), redirect: "follow", signal: ctrl.signal })
@@ -361,9 +365,13 @@ function createApp(cfg) {
         if (p === "/api/pay") {
           const o = open(b.token);
           need(o && o.t === "o", "This order could not be verified. Please place it again.");
-          const txn = str(b.txn, 40), from = str(b.from, 40);
-          need(txn.length >= 4, "Please enter the Transaction ID.");
-          need(from.replace(/\D/g, "").length >= 6, "Please enter the number or account you paid from.");
+          const txn = str(b.txn, 40), from = str(b.from, 40);   // optional (no longer asked on the site)
+          if (o.c.tm === PENDING) {
+            const tm = str(b.time, 40);
+            need(HOURLY.some((t) => t.label === tm), "Please choose your delivery time.");
+            need(slotOpen(o.c.d, tm), "That time is no longer available. Please choose a later time.");
+            o.c.tm = tm;
+          }
           if (b.payment && method(b.payment)) o.pm = b.payment;
           o.py = { txn, from, s: str(b.sender, 80), at: new Date().toISOString() };
           const token = seal(o), v = `${base}/v/${shortCode(o)}`;

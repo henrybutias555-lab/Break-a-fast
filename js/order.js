@@ -22,7 +22,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   const save = () => { orders[order.ref] = order; store.set("baf_orders_v1", orders); };
-  const c = order.c;
+  let c = order.c;
   let pm = METHODS.find((m) => m.id === order.pm) || METHODS[0];
   const niceDate = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
   const amount = String(order.tot);
@@ -60,7 +60,7 @@ document.addEventListener("DOMContentLoaded", () => {
       <li><span>Bank: <b>${esc(m.bank)}</b>. Account number: <code class="k">${esc(m.number)}</code>.</span></li>
       <li><span>Account name: <b>${esc(m.accountName)}</b>.</span></li>
       <li><span>Amount: <code class="k">${esc(amount)}</code>. In the reference / narration, enter <code class="k">${esc(order.ref)}</code>.</span></li>
-      <li><span>Keep the <b>transaction reference</b> from your receipt. You'll need it in the next step.</span></li>`;
+`;
     return `
       <li><span>Dial <code class="k">${esc(m.ussd)}</code> on your ${esc(m.name.split(" ")[0])} line.</span></li>
       <li><span>Choose <b>${m.id === "mtn" ? "Transfer Money" : "Send Money"}</b>, then send to a <b>${esc(m.name)}</b> number.</span></li>
@@ -68,7 +68,7 @@ document.addEventListener("DOMContentLoaded", () => {
       <li><span>Enter the amount <code class="k">${esc(amount)}</code>.</span></li>
       <li><span>For reference, enter <code class="k">${esc(order.ref)}</code>.</span></li>
       <li><span>Check that the name shown is <b>${esc(m.accountName)}</b>, then enter your PIN.</span></li>
-      <li><span>Keep the <b>Transaction ID</b> from your confirmation SMS. You'll need it in the next step.</span></li>`;
+`;
   }
 
   function renderPay() {
@@ -107,32 +107,31 @@ document.addEventListener("DOMContentLoaded", () => {
     $("#paid").addEventListener("click", renderConfirm);
   }
 
+  const PENDING = "Time chosen after payment";
+  const OH = C.orderHours || { open: 8, close: 19, prepHours: 1 };
+  const hr = (h) => (h === 12 ? "12pm" : h > 12 ? h - 12 + "pm" : h + "am");
+  function openSlots(iso) {
+    const out = [], now = new Date(), today = now.toISOString().slice(0, 10), h = now.getUTCHours() + now.getUTCMinutes() / 60;
+    if (iso < today) return out;
+    for (let s = OH.open; s < OH.close; s++) if (iso !== today || s >= h + OH.prepHours) out.push(`${hr(s)} to ${hr(s + 1)}`);
+    return out;
+  }
+
   function renderConfirm() {
     setStep(5);
-    const p = order.py || {}, bank = pm.kind === "bank";
+    const needTime = c.tm === PENDING, slots = needTime ? openSlots(c.d) : [];
     root.innerHTML = `
       <div class="checkout">
         <section class="panel" aria-labelledby="h-conf">
-          <h2 id="h-conf">5. Confirm your payment</h2>
-          <p class="muted">Enter the details from your ${bank ? "bank receipt" : esc(pm.name) + " confirmation SMS"}. We'll check them against our ${bank ? "bank statement" : "account"} before starting your order.</p>
+          <h2 id="h-conf">5. Confirm your payment${needTime ? " &amp; choose your time" : ""}</h2>
           <form class="form" id="pay-form" novalidate>
-            <div class="field">
-              <label for="p-txn">${bank ? "Transaction reference" : "Transaction ID"}</label>
-              <input id="p-txn" name="txn" autocomplete="off" placeholder="${bank ? "From your bank receipt" : "From your confirmation SMS"}" value="${esc(p.txn || "")}" required>
-              <div class="err">Please enter the ${bank ? "transaction reference" : "Transaction ID"}.</div>
-            </div>
-            <div class="row-2">
-              <div class="field">
-                <label for="p-from">${bank ? "Account / bank you paid from" : "Number you paid from"}</label>
-                <input id="p-from" name="from" ${bank ? "" : 'type="tel" inputmode="tel"'} value="${esc(p.from || (bank ? "" : c.p))}" required>
-                <div class="err">Please enter where you paid from.</div>
-              </div>
-              <div class="field">
-                <label for="p-sender">Name on that account</label>
-                <input id="p-sender" name="sender" value="${esc(p.s || c.n)}">
-              </div>
-            </div>
             <label class="check"><input type="checkbox" name="ok" required> <span>I have sent <b>${money(order.tot)}</b> by <b>${esc(pm.name)}</b> to <b>${esc(pm.number)}</b> with reference <b>${esc(order.ref)}</b>.</span></label>
+            ${needTime ? (slots.length ? `
+            <div class="field" id="time-field" hidden>
+              <label for="p-time">Delivery time on ${niceDate(c.d)}</label>
+              <select id="p-time" name="time">${slots.map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join("")}</select>
+              <div class="hint">Now that you've paid, pick the time that suits you.</div>
+            </div>` : `<div class="notice warn">There are no time slots left for ${niceDate(c.d)}. Please message us on WhatsApp after confirming and we'll arrange a time.</div>`) : ""}
             <div class="step-nav">
               <button class="btn btn-ghost" type="button" id="back">← Payment details</button>
               <button class="btn btn-wa" type="submit" id="send" disabled>Continue</button>
@@ -141,27 +140,23 @@ document.addEventListener("DOMContentLoaded", () => {
         </section>
         ${summaryPanel()}
       </div>`;
-    const f = $("#pay-form"), send = $("#send");
-    f.ok.addEventListener("change", () => (send.disabled = !f.ok.checked));
+    const f = $("#pay-form"), send = $("#send"), tf = $("#time-field");
+    f.ok.addEventListener("change", () => { send.disabled = !f.ok.checked; if (tf) tf.hidden = !f.ok.checked; });
     $("#back").addEventListener("click", renderPay);
-    $$("input", f).forEach((el) => el.addEventListener("input", () => el.closest(".field")?.classList.remove("invalid")));
     f.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const txn = f.txn.value.trim(), from = f.from.value.trim();
-      f.txn.closest(".field").classList.toggle("invalid", txn.length < 4);
-      f.from.closest(".field").classList.toggle("invalid", from.length < 6);
-      if (txn.length < 4) return f.txn.focus();
-      if (from.length < 6) return f.from.focus();
+      if (!f.ok.checked) return;
       send.disabled = true; send.textContent = "Saving…";
       $("#pay-err")?.remove();
       try {
         const r = await BAF.api("/api/pay", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: order.token, payment: pm.id, txn, from, sender: f.sender.value.trim() })
+          body: JSON.stringify({ token: order.token, payment: pm.id, time: f.time ? f.time.value : "" })
         });
         const j = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(j.error || "Could not save your payment details.");
+        if (!r.ok) throw new Error(j.error || "Could not save your payment confirmation.");
         Object.assign(order, j.order, { token: j.token, verifyUrl: j.verifyUrl, message: j.message, status: "Awaiting Confirmation" });
+        c = order.c;
         save();
         renderDone();
       } catch (err) {
@@ -184,7 +179,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <p class="small muted" style="margin-top:10px">The message includes a secure verify link, so we can confirm your order details quickly.</p>
           <h3 style="margin-top:22px">What happens next</h3>
           <ol class="timeline">
-            <li><div><b>We verify your payment</b>We match ${m.kind === "bank" ? "transfer" : "transaction"} <code class="k">${esc(order.py.txn)}</code> to order <code class="k">${esc(order.ref)}</code>.</div></li>
+            <li><div><b>We verify your payment</b>We check our ${esc(m.name)} account for <b>${money(order.tot)}</b> with reference <code class="k">${esc(order.ref)}</code>.</div></li>
             <li><div><b>We confirm on WhatsApp</b>Your order is marked <i>Paid</i> and we confirm your ${c.f === "Delivery" ? "delivery fee and time" : "pick-up point and time"}.</div></li>
             <li><div><b>Enjoy!</b>Freshly made and ready on ${niceDate(c.d)}, ${esc(c.tm.toLowerCase())}.</div></li>
           </ol>
