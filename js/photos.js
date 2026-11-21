@@ -60,7 +60,7 @@ window.BAF_MENU_PHOTOS = {
   "Hausa Koko": "assets/img/menu/hausa-koko.jpg?v=76a05aba",
   "Rice Water": "assets/img/menu/rice-water.jpg?v=af7134a8",
   "Porridge": "assets/img/menu/porridge.jpg?v=dd80a90e",
-  "Local Breakfast Combos": "assets/img/menu/local-breakfast-combos.jpg?v=60dd7fe6"
+  "Local Breakfast Combos": "assets/img/menu/local-breakfast-combos.jpg?v=223583e8"
 };
 /* Same photo used for matching items on the Menu page */
 Object.assign(window.BAF_MENU_PHOTOS, {
