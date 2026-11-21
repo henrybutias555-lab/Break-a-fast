@@ -17,6 +17,8 @@ SECTIONS = [
     ("finger-foods", "Finger Foods", "Kebabs, wings, meat pies & more", "events.html#finger-foods"),
     ("desserts", "Desserts", "Tigernut pudding, banana cake, kenkey", "events.html#desserts"),
     ("events", "Events & Catering", "Packages for 20 to 500 guests", "events.html"),
+    ("party-packages", "Party & Event Packages", "Snacks, finger foods, drinks & bar set-up", "events.html?group=party#packages"),
+    ("breakfast-packages", "Breakfast Event Packages", "Luxury Dine & Lavish Feast, 20-100 guests", "events.html?group=breakfast#packages"),
     ("full-menu", "Full Menu", "Everything we make", "menu.html"),
 ]
 BROWN, CREAM, BERRY = (59, 31, 20), (251, 243, 230), (168, 23, 79)
