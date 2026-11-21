@@ -287,7 +287,11 @@ function createApp(cfg) {
         <p><a class="inv" href="../i/${esc(codeForInvoice)}">📄 Open invoice</a></p>`;
     }
     return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
-  <title>Verify | Break-a-Fast</title><style>
+  <title>Verify order | Break-a-Fast</title>
+  <meta property="og:title" content="${x ? esc((x.t === "e" ? "Event enquiry " : "Order ") + x.ref) : "Order verification"} · Break-a-Fast">
+  <meta property="og:description" content="Tap to check this order is genuine.">
+  <meta property="og:image" content="${esc((ALLOWED_ORIGINS[0] || "") + "/assets/img/share.jpg")}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image"><style>
   body{margin:0;font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;background:#fbf3e6;color:#2a1710}
   main{max-width:640px;margin:0 auto;padding:20px 16px 40px}h1{font-size:1rem;color:#3b1f14;margin:0 0 14px}
   .ok,.bad{font-weight:800;font-size:1.4rem;padding:16px;border-radius:14px;text-align:center;color:#fff}.ok{background:#2f7d4a}.bad{background:#c0392b}
