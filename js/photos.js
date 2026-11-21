@@ -45,7 +45,12 @@ window.BAF_MENU_PHOTOS = {
   "Beef Skewers": "assets/img/menu/beef-skewers.jpg?v=2b44e7e9",
   "Mashed Kenkey": "assets/img/menu/mashed-kenkey.jpg?v=01a7e427",
   "Kelewele": "assets/img/menu/kelewele.jpg?v=4a72fdc9",
-  "Toast & Eggs": "assets/img/menu/toast-eggs.jpg?v=a8337d2c"
+  "Toast & Eggs": "assets/img/menu/toast-eggs.jpg?v=a8337d2c",
+  "Sausage Rolls": "assets/img/menu/sausage-rolls.jpg?v=8fa59a35",
+  "Mini Pizza": "assets/img/menu/mini-pizza.jpg?v=d8302674",
+  "Frozen Samosas": "assets/img/menu/frozen-samosas.jpg?v=5f2e90a3",
+  "Cheesecakes": "assets/img/menu/cheesecakes.jpg?v=c6475482",
+  "Cookies": "assets/img/menu/cookies.jpg?v=dafcf17b"
 };
 /* Same photo used for matching items on the Menu page */
 Object.assign(window.BAF_MENU_PHOTOS, {
