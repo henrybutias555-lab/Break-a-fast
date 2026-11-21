@@ -19,7 +19,6 @@ const app = createApp({
   SECRET,
   ALERT_URL: process.env.ALERT_URL || "",
   ALERT_KEY: process.env.ALERT_KEY || "",
-  OWNER_PIN: process.env.OWNER_PIN || "",
   ALLOWED_ORIGINS: (process.env.ALLOWED_ORIGINS || "https://break-a-fast.onrender.com").split(",").map((s) => s.trim()),
   W: sandbox.window, crypto, Buffer,
   LOGOS: Object.fromEntries([["header", "logo-invoice.jpg"], ["watermark", "logo-watermark.jpg"]].map(([k, f]) => {
@@ -33,7 +32,7 @@ http.createServer((req, res) => {
   req.on("end", async () => {
     const url = new URL(req.url, "http://x");
     const r = await app.handle({
-      method: req.method, pathname: url.pathname, origin: req.headers.origin,
+      method: req.method, pathname: url.pathname, search: url.search, origin: req.headers.origin,
       base: `${req.headers["x-forwarded-proto"] || "http"}://${req.headers.host}`,
       ip: String(req.headers["x-forwarded-for"] || req.socket.remoteAddress).split(",")[0].trim(),
       bodyText: size > 20000 ? "x".repeat(20001) : Buffer.concat(chunks).toString("utf8")

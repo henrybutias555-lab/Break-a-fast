@@ -41,7 +41,7 @@ export default {
     const url = new URL(request.url);
     const bodyText = request.method === "POST" ? (await request.text()).slice(0, 20001) : "";
     const r = await app.handle({
-      method: request.method, pathname: url.pathname, origin: request.headers.get("origin"),
+      method: request.method, pathname: url.pathname, search: url.search, origin: request.headers.get("origin"),
       base: url.origin, ip: request.headers.get("cf-connecting-ip") || "?", bodyText
     });
     for (const w of r.waits || []) ctx.waitUntil(Promise.resolve(w).catch(() => {}));

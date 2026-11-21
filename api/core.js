@@ -3,7 +3,9 @@
 function createApp(cfg) {
   const { SECRET, ALERT_URL, ALERT_KEY, ALLOWED_ORIGINS, W, crypto, Buffer } = cfg;
   const LOGOS = cfg.LOGOS || {};
-  const OWNER_PIN = String(cfg.OWNER_PIN || "");  // lets the owner confirm payments from the verify page          // data: URIs for the invoice (no cross-site image loading)
+  // Owner key: an HMAC of the order code, added only to links in the owner's emails.
+  const ownerKey = (code) => crypto.createHmac("sha256", SECRET).update("owner:" + code).digest("base64url").slice(0, 22);
+  const okOwner = (code, k) => { const a = Buffer.from(String(k || "")), g = Buffer.from(ownerKey(code)); return a.length === g.length && crypto.timingSafeEqual(a, g); };  // lets the owner confirm payments from the verify page          // data: URIs for the invoice (no cross-site image loading)
   const C = W.BAF_CONFIG, PRODUCTS = W.BAF_PRODUCTS, GROUPS = W.BAF_EVENT_GROUPS;
   const METHODS = C.paymentMethods;
   const method = (id) => METHODS.find((m) => m.id === id);
@@ -257,7 +259,7 @@ function createApp(cfg) {
 
   /* ---------- verify page ---------- */
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  function verifyPage(x, codeForInvoice = "") {
+  function verifyPage(x, codeForInvoice = "", owner = false) {
     const row = (k, v) => `<tr><th>${esc(k)}</th><td>${v}</td></tr>`;
     let body;
     if (!x) {
@@ -275,18 +277,17 @@ function createApp(cfg) {
         </table>
         <div class="todo"><b>Before you start this order:</b> check your ${esc(m ? m.name : "")} SMS/statement shows <b>${money(x.tot)}</b> received${x.py && x.py.txn ? ` with Transaction ID <b>${esc(x.py.txn)}</b>` : ""} and reference <b>${esc(x.ref)}</b>. The website cannot see your account, so only your own SMS/statement proves the money arrived.</div>
         <p><a class="inv" href="../i/${esc(codeForInvoice)}">📄 Open invoice</a></p>
-        ${OWNER_PIN ? `<details class="owner"><summary>Owner: confirm payment</summary>
+        ${owner ? `<details class="owner" open><summary>Owner: confirm payment</summary>
           <form id="cf" autocomplete="off">
             <p style="margin:6px 0 10px;font-size:.9rem">First check your MoMo/bank SMS shows the money with reference <b>${esc(x.ref)}</b>.</p>
             ${x.t === "e" ? `<label>Amount received (GH₵)<input name="amt" type="number" min="1" step="1" inputmode="decimal" value="${esc(x.pr ? x.pr.amt : x.dep || "")}"></label>
             <label>Paid with<select name="pm">${METHODS.map((m) => `<option value="${esc(m.id)}"${m.id === x.pm ? " selected" : ""}>${esc(m.name)}</option>`).join("")}</select></label>` : ""}
-            <label>Owner PIN<input name="pin" type="password" inputmode="numeric" required></label>
             <button type="submit">✅ Yes, I've received the payment</button>
             <div id="cf-msg"></div>
           </form></details>
           <script>
           document.getElementById("cf").addEventListener("submit",async(e)=>{e.preventDefault();const f=e.target,m=document.getElementById("cf-msg");m.textContent="Checking…";
-            try{const r=await fetch("/api/confirm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:${JSON.stringify(codeForInvoice)},pin:f.pin.value,amt:f.amt?f.amt.value:"",pm:f.pm?f.pm.value:""})});
+            try{const r=await fetch("/api/confirm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:${JSON.stringify(codeForInvoice)},k:${JSON.stringify(owner ? ownerKey(codeForInvoice) : "")},amt:f.amt?f.amt.value:"",pm:f.pm?f.pm.value:""})});
             const j=await r.json();if(!r.ok)throw new Error(j.error||"Could not confirm");location.href=j.receipt;}catch(err){m.textContent=err.message;}});
           </script>` : ""}`;
     } else {
@@ -302,18 +303,17 @@ function createApp(cfg) {
         </table>
         <div class="todo">When the token arrives, check your SMS/statement shows the right amount with reference <b>${esc(x.ref)}</b>.</div>
         <p><a class="inv" href="../i/${esc(codeForInvoice)}">📄 Open invoice</a></p>
-        ${OWNER_PIN ? `<details class="owner"><summary>Owner: confirm payment</summary>
+        ${owner ? `<details class="owner" open><summary>Owner: confirm payment</summary>
           <form id="cf" autocomplete="off">
             <p style="margin:6px 0 10px;font-size:.9rem">First check your MoMo/bank SMS shows the money with reference <b>${esc(x.ref)}</b>.</p>
             ${x.t === "e" ? `<label>Amount received (GH₵)<input name="amt" type="number" min="1" step="1" inputmode="decimal" value="${esc(x.pr ? x.pr.amt : x.dep || "")}"></label>
             <label>Paid with<select name="pm">${METHODS.map((m) => `<option value="${esc(m.id)}"${m.id === x.pm ? " selected" : ""}>${esc(m.name)}</option>`).join("")}</select></label>` : ""}
-            <label>Owner PIN<input name="pin" type="password" inputmode="numeric" required></label>
             <button type="submit">✅ Yes, I've received the payment</button>
             <div id="cf-msg"></div>
           </form></details>
           <script>
           document.getElementById("cf").addEventListener("submit",async(e)=>{e.preventDefault();const f=e.target,m=document.getElementById("cf-msg");m.textContent="Checking…";
-            try{const r=await fetch("/api/confirm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:${JSON.stringify(codeForInvoice)},pin:f.pin.value,amt:f.amt?f.amt.value:"",pm:f.pm?f.pm.value:""})});
+            try{const r=await fetch("/api/confirm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:${JSON.stringify(codeForInvoice)},k:${JSON.stringify(owner ? ownerKey(codeForInvoice) : "")},amt:f.amt?f.amt.value:"",pm:f.pm?f.pm.value:""})});
             const j=await r.json();if(!r.ok)throw new Error(j.error||"Could not confirm");location.href=j.receipt;}catch(err){m.textContent=err.message;}});
           </script>` : ""}`;
     }
@@ -554,6 +554,7 @@ draw(); setTimeout(draw,300);
   }
   function sendAlert(kind, x, url, inv) {
     if (!ALERT_URL || !ALERT_KEY) return Promise.resolve();
+    { const code = (url.split("/v/")[1] || "").split("?")[0]; if (code) url = url.split("?")[0] + "?k=" + ownerKey(code); }
     let subject, title, color;
     if (kind === "order") { subject = `🟡 New order ${x.ref} · ${money(x.tot)} · send invoice`; title = `New order ${x.ref}: create and send the invoice`; color = "#c27a12"; }
     else if (kind === "paid") { subject = `🟢 Payment reported ${x.ref} · ${money(x.tot)} · ${method(x.pm).name}${x.py.txn ? " · TXN " + x.py.txn : ""} · ${x.c.tm}`; title = `Customer reported payment for ${x.ref}. Check your ${method(x.pm).name} SMS.`; color = "#2f7d4a"; }
@@ -590,7 +591,8 @@ draw(); setTimeout(draw,300);
       if (req.method === "GET" && p === "/health") return out(200, { ok: true });
       if (req.method === "GET" && p.startsWith("/v/")) {
         const t = decodeURIComponent(p.slice(3)).replace(/[^0-9A-Za-z._-]/g, "");
-        return { ...out(200, verifyPage(t.includes(".") ? open(t) : openShort(t), t), "text/html"), headers: {} };
+        const k = new URLSearchParams(req.search || "").get("k");
+        return { ...out(200, verifyPage(t.includes(".") ? open(t) : openShort(t), t, okOwner(t, k)), "text/html"), headers: {} };
       }
       if (req.method === "GET" && p.startsWith("/r/")) {
         const t = decodeURIComponent(p.slice(3)).replace(/[^0-9A-Za-z._-]/g, "");
@@ -630,12 +632,8 @@ draw(); setTimeout(draw,300);
           return out(200, { order: o, token, verifyUrl: v, message: orderText(o, v) });
         }
         if (p === "/api/confirm") {
-          need(OWNER_PIN, "Owner confirmation is not set up.");
-          const key = "pin:" + (req.ip || "?"), now = Date.now(), tries = (hits.get(key) || []).filter((t) => now - t < 15 * 60 * 1000);
-          need(tries.length < 6, "Too many PIN attempts. Please wait 15 minutes.");
-          const a = Buffer.from(String(b.pin || "")), g = Buffer.from(OWNER_PIN);
-          if (!(a.length === g.length && crypto.timingSafeEqual(a, g))) { tries.push(now); hits.set(key, tries); throw new Bad("Wrong PIN."); }
           const t = String(b.code || "").replace(/[^0-9A-Za-z._-]/g, "");
+          need(okOwner(t, b.k), "Please open this page from the link in your email.");
           const x = t.includes(".") ? open(t) : openShort(t);
           need(x, "This order link is not valid.");
           let y;
