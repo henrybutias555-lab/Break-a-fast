@@ -50,7 +50,11 @@ window.BAF_MENU_PHOTOS = {
   "Mini Pizza": "assets/img/menu/mini-pizza.jpg?v=d8302674",
   "Frozen Samosas": "assets/img/menu/frozen-samosas.jpg?v=5f2e90a3",
   "Cheesecakes": "assets/img/menu/cheesecakes.jpg?v=c6475482",
-  "Cookies": "assets/img/menu/cookies.jpg?v=dafcf17b"
+  "Cookies": "assets/img/menu/cookies.jpg?v=dafcf17b",
+  "Pancakes": "assets/img/menu/pancakes.jpg?v=792240b5",
+  "Breakfast Sandwiches": "assets/img/menu/breakfast-sandwiches.jpg?v=c123533e",
+  "Coffee Specials": "assets/img/menu/coffee-specials.jpg?v=906d476f",
+  "Tea & Bread": "assets/img/menu/tea-bread.jpg?v=25c960ba"
 };
 /* Same photo used for matching items on the Menu page */
 Object.assign(window.BAF_MENU_PHOTOS, {
@@ -58,6 +62,7 @@ Object.assign(window.BAF_MENU_PHOTOS, {
   "Meat Pies": window.BAF_MENU_PHOTOS["Meat Pie"],
   "Chicken Wings": window.BAF_MENU_PHOTOS["Spicy Chicken Wings"],
   "Dessert Cups": window.BAF_MENU_PHOTOS["Tigernut Pudding"],
-  "Beverages": window.BAF_MENU_PHOTOS["Sobolo"]
+  "Beverages": window.BAF_MENU_PHOTOS["Sobolo"],
+  "Coffee & Pastries": window.BAF_MENU_PHOTOS["Coffee Specials"]
 });
 window.BAF_PHOTO_CREDITS = [];
