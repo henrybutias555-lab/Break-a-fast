@@ -351,6 +351,7 @@ h1{margin:0 0 4px;color:#3b1f14;font-size:1.5rem}.ref{color:#6f5547}.big{font-si
 .tl{list-style:none;margin:0;padding:0;display:grid;gap:12px}.tl li{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start;color:#9a8577}
 .tl li::before{content:"";width:22px;height:22px;border-radius:50%;border:3px solid #e8d6bd;background:#fff;margin-top:2px}
 .tl li.done{color:#2a1710}.tl li.done::before{background:#2f7d4a;border-color:#2f7d4a}.tl li.now{color:#a8174f;font-weight:800}.tl li.now::before{border-color:#a8174f;background:#fde8f0}
+.cx summary{cursor:pointer;font-weight:800;color:#a8174f}.cx select,.cx textarea{width:100%;font:inherit;padding:10px;border:1px solid #e8d6bd;border-radius:10px;margin:6px 0 10px}.warn{background:#fdecec;border-radius:10px;padding:10px;color:#7a1d1d}.cxb{width:100%;background:#b3261e;color:#fff;border:0;font:inherit;font-weight:800;padding:13px;border-radius:999px;cursor:pointer}.cxb:disabled{opacity:.6}
 .tl b{display:block}.items{margin:0;padding-left:18px}.muted{color:#6f5547;font-size:.9rem}a.btn{display:block;text-align:center;background:#1fa855;color:#fff;font-weight:800;padding:13px;border-radius:999px;text-decoration:none;margin-top:10px}
 </style></head><body><header><img src="${LOGOS.header || esc(site) + "/assets/img/logo-invoice.jpg"}" alt="">Break-a-Fast · Order tracker</header><main>${body}</main></body></html>`;
     if (!x) return head("Order not found", `<div class="card"><h1>Link not valid</h1><p>This tracking link is incomplete. Please message us on WhatsApp with your order reference.</p><a class="btn" href="https://wa.me/${esc(C.whatsappIntl)}">Chat on WhatsApp</a></div>`);
@@ -365,6 +366,28 @@ h1{margin:0 0 4px;color:#3b1f14;font-size:1.5rem}.ref{color:#6f5547}.big{font-si
       [isE ? "Preparing your event" : "Preparing your order", isE ? "We're getting everything ready." : "Freshly made for you.", rank >= 3 && days <= (isE ? 3 : 1)],
       [isE ? "Event day" : (x.c.f === "Delivery" ? "Delivery day" : "Pick-up day"), niceDate(date) + (tm ? ", " + tm : ""), rank >= 3 && days <= 0]
     ];
+    const word = isE ? "booking" : "order";
+    if (stage === "x") return head(`Cancelled ${x.ref}`, `
+      <div class="card"><h1>${isE ? "Booking" : "Order"} cancelled</h1><div class="ref">Reference <b>${esc(x.ref)}</b></div>
+        <p style="margin:12px 0 4px"><span class="big" style="color:#9a8577">Cancelled</span></p>
+        <div class="when">Was for ${esc(niceDate(date))}${tm ? " · " + esc(tm) : ""}</div>
+        <p class="muted" style="margin-bottom:0">You cancelled this ${word} and Break-a-Fast has been notified. Nothing more will be prepared.</p></div>
+      <div class="card"><b>${isE ? "Booking" : "Items"}</b>${isE ? `<p>${esc(x.ty)} · ${esc((x.g ? x.g + " / " : "") + x.pk)}</p>` : `<ul class="items">${x.it.map((i) => `<li>${i[3]} × ${esc(itemTitle(i))}</li>`).join("")}</ul>`}</div>
+      <a class="btn" href="https://wa.me/${esc(C.whatsappIntl)}?text=${encodeURIComponent("Hello Break-a-Fast! I cancelled my " + word + " " + x.ref + ".")}">Message us on WhatsApp</a>
+      <p class="muted" style="text-align:center;margin-top:14px">Changed your mind? Place a new ${word} on our website.</p>`);
+    const canCancel = days >= 1;
+    const policy = rank >= 3
+      ? `<p class="warn">You have already paid. Under our <a href="${esc(site)}/terms.html#orders">Terms</a>, payments are <b>not refunded</b> when an ${word} is cancelled, except for force majeure (40% refunded).</p>`
+      : `<p class="muted">You haven't paid yet, so cancelling costs nothing.</p>`;
+    const cancelBox = !canCancel ? `<p class="muted" style="text-align:center">Need to cancel or change this ${word}? Please call or WhatsApp us.</p>`
+      : `<details class="card cx"><summary>Cancel this ${word}</summary>${policy}
+        <label for="cx-r"><b>Reason</b> (optional)</label>
+        <select id="cx-r"><option>Plans changed</option><option>Ordered by mistake</option><option>Wrong date or details</option><option>Found another option</option><option>Other</option></select>
+        <textarea id="cx-n" maxlength="300" placeholder="Anything else you'd like us to know (optional)"></textarea>
+        <button type="button" id="cx-go" class="cxb">Yes, cancel my ${word}</button><p id="cx-m" class="muted" role="status"></p></details>
+      <script>document.getElementById("cx-go").onclick=async function(){var b=this,m=document.getElementById("cx-m");if(!confirm("Cancel ${word} ${esc(x.ref)}? This can't be undone."))return;b.disabled=true;m.textContent="Cancelling…";
+      try{var q=new URLSearchParams(location.search);var r=await fetch("/api/cancel",{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({code:${JSON.stringify(shortCode(x))},s:q.get("s")||"",g:q.get("g")||"",reason:document.getElementById("cx-r").value,note:document.getElementById("cx-n").value})});var j=await r.json();if(!r.ok)throw new Error(j.error||"Could not cancel.");
+      location.href=j.site?j.site+"/track.html?cx="+encodeURIComponent(j.ref)+"&u="+encodeURIComponent(j.track):j.track;}catch(e){m.textContent=e.message+" Please message us on WhatsApp.";b.disabled=false;}};</script>`;
     const nowIdx = steps.findIndex((s) => !s[2]);
     const countdown = days > 1 ? `Coming in <span class="big">${days} days</span>` : days === 1 ? `<span class="big">Tomorrow</span>` : days === 0 ? `<span class="big">Today!</span>` : `<span class="big">Completed</span>`;
     const what = isE ? `<p><b>${esc(x.ty)}</b> · ${esc((x.g ? x.g + " / " : "") + x.pk)}${x.gu ? ", " + esc(x.gu) + " guests" : ""}</p>${x.v ? `<p class="muted">Venue: ${esc(x.v)}</p>` : ""}`
@@ -377,7 +400,7 @@ h1{margin:0 0 4px;color:#3b1f14;font-size:1.5rem}.ref{color:#6f5547}.big{font-si
       <div class="card"><ol class="tl">${steps.map((s, i) => `<li class="${s[2] ? "done" : i === nowIdx ? "now" : ""}"><span><b>${esc(s[0])}</b>${esc(s[1])}</span></li>`).join("")}</ol></div>
       <div class="card"><b>${isE ? "Booking" : "Items"}</b>${what}</div>
       <a class="btn" href="https://wa.me/${esc(C.whatsappIntl)}?text=${encodeURIComponent("Hello Break-a-Fast! About my order " + x.ref + ":")}">Questions? Chat on WhatsApp</a>
-      <p class="muted" style="text-align:center;margin-top:14px">Save this page to check back any time.</p>`);
+      <p class="muted" style="text-align:center;margin-top:14px">Save this page to check back any time.</p>${cancelBox}`);
   }
 
   /* ---------- printable invoice (owner opens it from the email alert) ---------- */
@@ -617,6 +640,8 @@ draw(); setTimeout(draw,300);
       (x.tot ? row("Estimated total", `<b>${money(x.tot)}</b> (excl. transport)`) + row(`${C.eventDepositPercent}% token`, `<b>${money(x.dep)}</b>`) : row("Price", "Custom quote needed")) +
         row("Name", esc(x.n)) + row("Phone", `<a href="tel:${esc(x.p)}">${esc(x.p)}</a> · <a href="https://wa.me/233${esc(x.p.slice(1))}">WhatsApp</a>`) + (x.m ? row("Message", esc(x.m)) : "") + row("Preferred payment", esc(method(x.pm).name));
     }
+    if (x.cx) rows = row("Cancelled", `<b style="color:#b3261e">Yes, by the customer on the website</b>`) + row("Reason", esc(x.cx.r || "Not given")) + (x.cx.n ? row("Customer note", esc(x.cx.n)) : "") +
+      row("Paid?", x.cx.paid ? "You had confirmed payment (no refund per Terms, except force majeure 40%)" : "Payment had not been confirmed") + rows;
     return `<div style="font-family:Arial,sans-serif;max-width:560px">
       <div style="background:${color};color:#fff;padding:14px 16px;border-radius:10px;font-size:18px;font-weight:bold">${esc(title)}</div>
       <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:14px">${rows}</table>
@@ -629,6 +654,7 @@ draw(); setTimeout(draw,300);
     let subject, title, color;
     if (kind === "order") { subject = `🟡 New order ${x.ref} · ${money(x.tot)} · send invoice`; title = `New order ${x.ref}: create and send the invoice`; color = "#c27a12"; }
     else if (kind === "paid") { subject = `🟢 Payment reported ${x.ref} · ${money(x.tot)} · ${method(x.pm).name}${x.py.txn ? " · TXN " + x.py.txn : ""} · ${x.c.tm}`; title = `Customer reported payment for ${x.ref}. Check your ${method(x.pm).name} SMS.`; color = "#2f7d4a"; }
+    else if (kind === "cancelled") { subject = `🔴 CANCELLED ${x.ref} · ${x.t === "e" ? x.ty + " · " + niceDate(x.d) : money(x.tot) + " · " + niceDate(x.c.d)}`; title = `The customer cancelled ${x.ref}. Do not prepare it.`; color = "#b3261e"; }
     else if (kind === "confirmed") { const amt = x.t === "e" ? x.pr.amt : x.tot; subject = `✅ Payment confirmed ${x.ref} · ${money(amt)}`; title = `You confirmed ${money(amt)} received for ${x.ref}.`; color = "#2f7d4a"; }
     else if (kind === "eventpaid") { const k = { deposit: "Deposit", full: "Full payment", other: "Payment" }[x.pr.k] || "Payment"; subject = `🟢 ${k} reported ${x.ref} · ${money(x.pr.amt)} · ${method(x.pr.pm).name} · ${x.ty} ${niceDate(x.d)}`; title = `${k} of ${money(x.pr.amt)} reported for ${x.ref}. Check your ${method(x.pr.pm).name} SMS.`; color = "#2f7d4a"; }
     else { subject = `🎉 Event enquiry ${x.ref} · ${x.ty} · ${niceDate(x.d)}`; title = `New event enquiry ${x.ref}`; color = "#a8174f"; }
@@ -671,8 +697,8 @@ draw(); setTimeout(draw,300);
         const x = t.includes(".") ? open(t) : openShort(t);
         const code = x ? shortCode(x) : "";
         let stage = "p";
-        if (x && st && ["i", "c"].includes(st)) { const a = Buffer.from(g), b2 = Buffer.from(trackSig(code, st)); if (a.length === b2.length && crypto.timingSafeEqual(a, b2)) stage = st; }
-        if (x && x.cf) stage = "c";
+        if (x && st && ["i", "c", "x"].includes(st)) { const a = Buffer.from(g), b2 = Buffer.from(trackSig(code, st)); if (a.length === b2.length && crypto.timingSafeEqual(a, b2)) stage = st; }
+        if (x && x.cf && stage !== "x") stage = "c";
         return { ...out(200, trackPage(x, stage), "text/html"), headers: {} };
       }
       if (req.method === "GET" && p.startsWith("/d/")) {
@@ -735,6 +761,19 @@ draw(); setTimeout(draw,300);
           const note = Buffer.from(str(b.n, 120)).toString("base64url");
           const body = [b.kind === "r" ? "r" : "i", code, num(b.f), num(b.d), num(b.q), num(b.r), num(b.p), note].join("~");
           return out(200, { ok: true, url: `${base}/d/${body}~${docSig(body)}` });
+        }
+        if (p === "/api/cancel") {
+          const t = String(b.code || "").replace(/[^0-9A-Za-z._-]/g, "");
+          const x = t.includes(".") ? open(t) : openShort(t);
+          need(x, "This order link is not valid.");
+          const code = shortCode(x), date = x.t === "e" ? x.d : x.c.d;
+          need(Date.parse(date) - Date.parse(ghanaToday()) >= 864e5, "It's too close to the day to cancel online.");
+          const st = ["i", "c"].includes(b.s) ? b.s : "", g = Buffer.from(String(b.g || "")), w = st ? Buffer.from(trackSig(code, st)) : null;
+          const paid = !!(st === "c" && w && g.length === w.length && crypto.timingSafeEqual(g, w));
+          const reason = String(b.reason || "").slice(0, 60), note = String(b.note || "").replace(/\s+/g, " ").trim().slice(0, 300);
+          const y = { ...x, cx: { r: reason, n: note, paid } };
+          waits.push(sendAlert("cancelled", y, `${base}/v/${code}`, ""));
+          return out(200, { ok: true, ref: x.ref, track: trackUrl(base, code, "x"), site: ALLOWED_ORIGINS[0] || "" });
         }
         if (p === "/api/confirm") {
           const t = String(b.code || "").replace(/[^0-9A-Za-z._-]/g, "");
