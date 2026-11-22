@@ -339,6 +339,39 @@ function createApp(cfg) {
   </style></head><body><main><h1>Break-a-Fast · Order verification</h1>${body}</main></body></html>`;
   }
 
+  /* ---------- live order status (kept in the owner's Google Apps Script, cached here) ---------- */
+  const RANK = { p: 1, i: 2, pd: 3, c: 4 };
+  const statusCache = new Map();
+  let storeOk = null, storeChecked = 0;
+  async function storeReady() {
+    if (!ALERT_URL || !ALERT_KEY) return false;
+    if (storeOk === true || Date.now() - storeChecked < 5 * 60 * 1000) return !!storeOk;
+    storeChecked = Date.now();
+    try { const ctrl = new AbortController(); setTimeout(() => ctrl.abort(), 8000);
+      const t = await (await fetch(ALERT_URL, { redirect: "follow", signal: ctrl.signal })).text(); storeOk = /status v2/.test(t);
+    } catch (e) { storeOk = false; }
+    if (!storeOk) console.error("status store: Apps Script not updated yet (tracking links show their own stage only)");
+    return storeOk;
+  }
+  async function storeCall(body) {
+    const ctrl = new AbortController(); setTimeout(() => ctrl.abort(), 8000);
+    return (await fetch(ALERT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ key: ALERT_KEY, ...body }), redirect: "follow", signal: ctrl.signal })).text();
+  }
+  async function getStatus(ref) {
+    if (statusCache.has(ref)) return statusCache.get(ref);
+    let s = "";
+    try { if (await storeReady()) { s = (await storeCall({ action: "get", ref })).trim(); if (!/^(i|pd|c|x)$/.test(s)) s = ""; } } catch (e) { return ""; }
+    if (statusCache.size > 5000) statusCache.clear();
+    statusCache.set(ref, s); return s;
+  }
+  async function setStatus(ref, s) {
+    const cur = await getStatus(ref);
+    if (cur === "x" || (s !== "x" && (RANK[cur] || 0) >= RANK[s])) return;   // never go backwards
+    statusCache.set(ref, s);
+    try { if (await storeReady()) await storeCall({ action: "set", ref, s }); } catch (e) { console.error("status save failed:", e.message); }
+  }
+  const bestStage = (a, b) => (a === "x" || b === "x") ? "x" : ((RANK[a] || 0) >= (RANK[b] || 0) ? a : b);
+
   /* ---------- customer tracking page ---------- */
   function trackPage(x, stage) {
     const site = ALLOWED_ORIGINS[0] || "";
@@ -358,11 +391,11 @@ h1{margin:0 0 4px;color:#3b1f14;font-size:1.5rem}.ref{color:#6f5547}.big{font-si
     const isE = x.t === "e", date = isE ? x.d : x.c.d, today = ghanaToday();
     const days = Math.round((Date.parse(date + "T00:00:00Z") - Date.parse(today + "T00:00:00Z")) / 864e5);
     const tm = isE ? "" : (x.c.tm === PENDING ? "time chosen after payment" : x.c.tm);
-    const rank = { p: 1, i: 2, c: 3 }[stage] || 1;
+    const r0 = RANK[stage] || 1, rank = r0 >= 4 ? 3 : r0 === 3 ? 2 : r0;   // pd shows as "invoice sent, payment being checked"
     const steps = [
       ["Order placed", isE ? "We received your event enquiry." : "We received your order.", true],
       ["Invoice sent", "Your invoice with payment details was sent on WhatsApp.", rank >= 2],
-      [isE ? "Deposit confirmed" : "Payment confirmed", isE ? "Your booking is secured." : "Thank you! Your payment was received.", rank >= 3],
+      [isE ? "Deposit confirmed" : "Payment confirmed", r0 === 3 ? "We've got your payment report and are checking it. Your receipt follows once it's confirmed." : rank >= 3 ? (isE ? "Your booking is secured." : "Thank you! Your payment was received.") : "Waiting for your payment.", rank >= 3],
       [isE ? "Preparing your event" : "Preparing your order", isE ? "We're getting everything ready." : "Freshly made for you.", rank >= 3 && days <= (isE ? 3 : 1)],
       [isE ? "Event day" : (x.c.f === "Delivery" ? "Delivery day" : "Pick-up day"), niceDate(date) + (tm ? ", " + tm : ""), rank >= 3 && days <= 0]
     ];
@@ -376,7 +409,7 @@ h1{margin:0 0 4px;color:#3b1f14;font-size:1.5rem}.ref{color:#6f5547}.big{font-si
       <a class="btn" href="https://wa.me/${esc(C.whatsappIntl)}?text=${encodeURIComponent("Hello Break-a-Fast! I cancelled my " + word + " " + x.ref + ".")}">Message us on WhatsApp</a>
       <p class="muted" style="text-align:center;margin-top:14px">Changed your mind? Place a new ${word} on our website.</p>`);
     const canCancel = days >= 1;
-    const policy = rank >= 3
+    const policy = r0 >= 3
       ? `<p class="warn">You have already paid. Under our <a href="${esc(site)}/terms.html#orders">Terms</a>, payments are <b>not refunded</b> when an ${word} is cancelled, except for force majeure (40% refunded).</p>`
       : `<p class="muted">You haven't paid yet, so cancelling costs nothing.</p>`;
     const cancelBox = !canCancel ? `<p class="muted" style="text-align:center">Need to cancel or change this ${word}? Please call or WhatsApp us.</p>`
@@ -392,7 +425,7 @@ h1{margin:0 0 4px;color:#3b1f14;font-size:1.5rem}.ref{color:#6f5547}.big{font-si
     const countdown = days > 1 ? `Coming in <span class="big">${days} days</span>` : days === 1 ? `<span class="big">Tomorrow</span>` : days === 0 ? `<span class="big">Today!</span>` : `<span class="big">Completed</span>`;
     const what = isE ? `<p><b>${esc(x.ty)}</b> · ${esc((x.g ? x.g + " / " : "") + x.pk)}${x.gu ? ", " + esc(x.gu) + " guests" : ""}</p>${x.v ? `<p class="muted">Venue: ${esc(x.v)}</p>` : ""}`
       : `<ul class="items">${x.it.map((i) => `<li>${i[3]} × ${esc(itemTitle(i))} · ${esc(i[1])}</li>`).join("")}</ul>`;
-    const nextTip = rank === 1 ? "Next: we'll send your invoice on WhatsApp." : rank === 2 ? `Next: pay using reference ${esc(x.ref)}, then tap "I've paid" on your invoice link.` : days > 0 ? "All set. We'll be in touch before the day." : "";
+    const nextTip = rank === 1 ? "Next: we'll send your invoice on WhatsApp." : r0 === 3 ? "Payment reported. We're checking it now and will send your receipt." : rank === 2 ? `Next: pay using reference ${esc(x.ref)}, then tap "I've paid" on your invoice link.` : days > 0 ? "All set. We'll be in touch before the day." : "";
     return head(`Order ${x.ref}`, `
       <div class="card"><h1>${isE ? "Your event" : "Your order"}</h1><div class="ref">Reference <b>${esc(x.ref)}</b></div>
         <p style="margin:12px 0 4px">${countdown}</p><div class="when">${esc(niceDate(date))}${tm ? " · " + esc(tm) : ""}${isE ? "" : " · " + esc(x.c.f)}</div>
@@ -400,7 +433,7 @@ h1{margin:0 0 4px;color:#3b1f14;font-size:1.5rem}.ref{color:#6f5547}.big{font-si
       <div class="card"><ol class="tl">${steps.map((s, i) => `<li class="${s[2] ? "done" : i === nowIdx ? "now" : ""}"><span><b>${esc(s[0])}</b>${esc(s[1])}</span></li>`).join("")}</ol></div>
       <div class="card"><b>${isE ? "Booking" : "Items"}</b>${what}</div>
       <a class="btn" href="https://wa.me/${esc(C.whatsappIntl)}?text=${encodeURIComponent("Hello Break-a-Fast! About my order " + x.ref + ":")}">Questions? Chat on WhatsApp</a>
-      <p class="muted" style="text-align:center;margin-top:14px">Save this page to check back any time.</p>${cancelBox}`);
+      <p class="muted" style="text-align:center;margin-top:14px">Save this link: it always shows your latest progress.</p>${cancelBox}`);
   }
 
   /* ---------- printable invoice (owner opens it from the email alert) ---------- */
@@ -410,7 +443,8 @@ h1{margin:0 0 4px;color:#3b1f14;font-size:1.5rem}.ref{color:#6f5547}.big{font-si
     return d.toISOString().slice(0, 10);
   }
   function invoicePage(x, asReceipt = false, code = "", opts = {}) {
-    const trackC = opts.base && code && QR ? trackUrl(opts.base, code, "c") : "";
+    const trackC = opts.base && code && QR ? trackUrl(opts.base, code, asReceipt ? "c" : "i") : "";
+    const qrBox = trackC ? `<div style="display:flex;gap:12px;align-items:center;margin-top:10px;background:#fbf3e6;border-radius:10px;padding:10px 12px"><img src="${QR(trackC)}" alt="" style="width:92px;height:92px;image-rendering:pixelated;background:#fff;padding:4px;border-radius:6px"><div style="font-size:.88rem"><b style="color:#3b1f14">Track your ${x && x.t === "e" ? "booking" : "order"}</b><br>Scan any time to see your payment status, ${x && x.t === "e" ? "event" : "delivery"} date and progress.</div></div>` : "";
     const RO = opts.preset || null;           // read-only view for the customer
     if (!x) return verifyPage(null).replace("Order verification", asReceipt ? "Receipt" : "Invoice");
     const R = asReceipt && (x.t === "o" || !!x.pr);  // shop orders after payment, or events with a reported payment
@@ -511,7 +545,7 @@ body.pdfmode .top,body.pdfmode .cols{display:flex}body.pdfmode .cols{display:gri
   <div class="sum" id="sum"></div>
   ${menu}
   <div class="box" id="noteBox" hidden><h3>Note</h3><div class="note" id="noteOut"></div></div>
-  ${R ? `<div class="box"><h3>Payment received</h3><table class="pay"><tr><td>Method</td><td><b>${esc(data.method)}</b></td></tr><tr><td>Reference</td><td><b>${esc(x.ref)}</b></td></tr><tr><td>Paid to</td><td>${esc(METHODS[0].accountName)}</td></tr></table></div><p style="margin-top:14px;font-weight:700;color:#3b1f14">${isE ? "Thank you for booking with us!" : "Thank you for your order!"}</p>${trackC ? `<div style="display:flex;gap:12px;align-items:center;margin-top:10px;background:#fbf3e6;border-radius:10px;padding:10px 12px"><img src="${QR(trackC)}" alt="" style="width:92px;height:92px;image-rendering:pixelated;background:#fff;padding:4px;border-radius:6px"><div style="font-size:.88rem"><b style="color:#3b1f14">Track your ${isE ? "event" : "order"}</b><br>Scan to see your ${isE ? "event" : "delivery"} date, countdown and progress.</div></div>` : ""}` : `<div class="box"><h3>How to pay · use reference <b style="color:#a8174f">${esc(x.ref)}</b></h3><table class="pay">${pay}</table></div>`}
+  ${R ? `<div class="box"><h3>Payment received</h3><table class="pay"><tr><td>Method</td><td><b>${esc(data.method)}</b></td></tr><tr><td>Reference</td><td><b>${esc(x.ref)}</b></td></tr><tr><td>Paid to</td><td>${esc(METHODS[0].accountName)}</td></tr></table></div><p style="margin-top:14px;font-weight:700;color:#3b1f14">${isE ? "Thank you for booking with us!" : "Thank you for your order!"}</p>${qrBox}` : `<div class="box"><h3>How to pay · use reference <b style="color:#a8174f">${esc(x.ref)}</b></h3><table class="pay">${pay}</table></div>${qrBox}`}
   <p class="terms">${esc(terms)}</p>
 </div>
 ${RO ? `<div class="bar"><button class="pdfb" type="button" id="pdf2" style="flex:1">⬇ Download ${R ? "receipt" : "invoice"} PDF</button><button id="share2" hidden></button><a id="wa2" hidden></a></div>`
@@ -704,7 +738,8 @@ draw(); setTimeout(draw,300);
         let stage = "p";
         if (x && st && ["i", "c", "x"].includes(st)) { const a = Buffer.from(g), b2 = Buffer.from(trackSig(code, st)); if (a.length === b2.length && crypto.timingSafeEqual(a, b2)) stage = st; }
         if (x && x.cf && stage !== "x") stage = "c";
-        return { ...out(200, trackPage(x, stage), "text/html"), headers: {} };
+        if (x) stage = bestStage(stage, await getStatus(x.ref));
+        return { ...out(200, trackPage(x, stage), "text/html"), headers: { "Cache-Control": "no-store" } };
       }
       if (req.method === "GET" && p.startsWith("/d/")) {
         const t = decodeURIComponent(p.slice(3)).replace(/[^0-9A-Za-z._~-]/g, "");
@@ -755,7 +790,7 @@ draw(); setTimeout(draw,300);
           if (b.payment && method(b.payment)) o.pm = b.payment;
           o.py = { txn, from, s: str(b.sender, 80), at: new Date().toISOString() };
           const token = seal(o), v = `${base}/v/${shortCode(o)}`;
-          waits.push(sendAlert("paid", o, v, `${base}/r/${token}`));
+          waits.push(sendAlert("paid", o, v, `${base}/r/${token}`), setStatus(o.ref, "pd"));
           return out(200, { order: o, token, verifyUrl: v, message: orderText(o, v) });
         }
         if (p === "/api/doc") {
@@ -765,6 +800,7 @@ draw(); setTimeout(draw,300);
           const num = (v) => { const n = Math.max(0, Math.round(Number(v) * 100) / 100); return Number.isFinite(n) && n < 1e7 ? String(n) : "0"; };
           const note = Buffer.from(str(b.n, 120)).toString("base64url");
           const body = [b.kind === "r" ? "r" : "i", code, num(b.f), num(b.d), num(b.q), num(b.r), num(b.p), note].join("~");
+          waits.push(setStatus(openShort(code).ref, b.kind === "r" ? "c" : "i"));
           return out(200, { ok: true, url: `${base}/d/${body}~${docSig(body)}` });
         }
         if (p === "/api/cancel") {
@@ -777,7 +813,7 @@ draw(); setTimeout(draw,300);
           const paid = !!(st === "c" && w && g.length === w.length && crypto.timingSafeEqual(g, w));
           const reason = String(b.reason || "").slice(0, 60), note = String(b.note || "").replace(/\s+/g, " ").trim().slice(0, 300);
           const y = { ...x, cx: { r: reason, n: note, paid } };
-          waits.push(sendAlert("cancelled", y, `${base}/v/${code}`, ""));
+          waits.push(sendAlert("cancelled", y, `${base}/v/${code}`, ""), setStatus(x.ref, "x"));
           return out(200, { ok: true, ref: x.ref, track: trackUrl(base, code, "x"), site: ALLOWED_ORIGINS[0] || "" });
         }
         if (p === "/api/confirm") {
@@ -794,7 +830,7 @@ draw(); setTimeout(draw,300);
             y = { ...x, py: x.py || { txn: "", from: "", s: "", at: new Date().toISOString() }, cf: 1 };
           }
           const rUrl = `${base}/r/${seal(y)}`;
-          waits.push(sendAlert("confirmed", y, `${base}/v/${t}`, rUrl));
+          waits.push(sendAlert("confirmed", y, `${base}/v/${t}`, rUrl), setStatus(x.ref, "c"));
           return out(200, { ok: true, receipt: rUrl });
         }
         if (p === "/api/event-paid") {
@@ -807,7 +843,7 @@ draw(); setTimeout(draw,300);
           const pm = method(b.payment) ? b.payment : e.pm;
           const e2 = { ...e, pr: { amt, k, pm, at: new Date().toISOString() } };
           const v = `${base}/v/${shortCode(e)}`;
-          waits.push(sendAlert("eventpaid", e2, v, `${base}/r/${seal(e2)}`));
+          waits.push(sendAlert("eventpaid", e2, v, `${base}/r/${seal(e2)}`), setStatus(e.ref, "pd"));
           return out(200, { ok: true, ref: e.ref });
         }
         if (p === "/api/event") {
