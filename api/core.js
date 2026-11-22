@@ -390,7 +390,8 @@ h1{margin:0 0 4px;color:#3b1f14;font-size:1.5rem}.ref{color:#6f5547}.big{font-si
     if (!x) return head("Order not found", `<div class="card"><h1>Link not valid</h1><p>This tracking link is incomplete. Please message us on WhatsApp with your order reference.</p><a class="btn" href="https://wa.me/${esc(C.whatsappIntl)}">Chat on WhatsApp</a></div>`);
     const isE = x.t === "e", date = isE ? x.d : x.c.d, today = ghanaToday();
     const days = Math.round((Date.parse(date + "T00:00:00Z") - Date.parse(today + "T00:00:00Z")) / 864e5);
-    const tm = isE ? "" : (x.c.tm === PENDING ? "time chosen after payment" : x.c.tm);
+    const r0p = RANK[stage] || 1;
+    const tm = isE ? "" : (x.c.tm === PENDING ? (r0p >= 3 || stage === "x" ? "at the time you chose" : "time chosen after payment") : x.c.tm);
     const r0 = RANK[stage] || 1, rank = r0 >= 4 ? 3 : r0 === 3 ? 2 : r0;   // pd shows as "invoice sent, payment being checked"
     const steps = [
       ["Order placed", isE ? "We received your event enquiry." : "We received your order.", true],
@@ -516,7 +517,7 @@ body.pdfmode .top,body.pdfmode .cols{display:flex}body.pdfmode .cols{display:gri
 </head><body>
 <div class="tools"${RO ? ' style="display:none"' : ""}>
   <h2>Prepare ${DOC.toLowerCase()} ${esc(x.ref)}</h2>
-  ${R && x.cf ? `<div style="background:#ecf7ef;border:1px solid #b7dfc3;border-radius:10px;padding:8px 10px;font-size:.85rem;color:#2f7d4a"><b>✅ Payment confirmed by you.</b> Download the PDF and send it to the customer.</div>` : ""}
+  ${R && x.cf ? `<div style="background:#ecf7ef;border:1px solid #b7dfc3;border-radius:10px;padding:8px 10px;font-size:.85rem;color:#2f7d4a"><b>✅ Payment confirmed by you.</b> Now send the receipt link to the customer.</div>` : ""}
   ${R && !x.cf ? `<div style="background:#fff7e6;border:1px solid #f1d39a;border-radius:10px;padding:8px 10px;font-size:.85rem"><b>Before sending:</b> check your ${esc(data.method)} SMS shows the money with reference <b>${esc(x.ref)}</b>. Only send a receipt once the payment has arrived.</div>` : ""}
   <div class="row">
     <label class="req">${isE ? "Transport (GH₵)" : data.delivery ? "Delivery fee (GH₵)" : "Extra charge (GH₵)"} *<input id="fee" autocomplete="off" type="number" min="0" step="1" inputmode="decimal" placeholder="Required: type 0 if none" required><span class="rq">Required: enter an amount, or 0 if none.</span></label>
@@ -527,9 +528,9 @@ body.pdfmode .top,body.pdfmode .cols{display:flex}body.pdfmode .cols{display:gri
   ${data.custom ? `<label>Quoted price (GH₵)<input id="quote" autocomplete="off" type="number" min="0" step="1" inputmode="decimal" placeholder="Custom quote"></label>` : ""}
   <label>Note on invoice (optional)<textarea id="noteIn" autocomplete="off" rows="2" placeholder="e.g. Delivery to East Legon, set-up from 2pm"></textarea></label>
   <div class="btns">${R
-    ? `<button id="share" type="button" style="background:#1fa855">📤 Send receipt PDF to ${esc(name.split(" ")[0])}</button><button id="pdf" type="button">⬇ Download PDF</button><a id="wa" hidden></a>`
+    ? `<a class="wa" id="wa" target="_blank" rel="noopener" style="background:#1fa855">💬 Send receipt link to ${esc(name.split(" ")[0])} (opens their chat)</a><button id="share" type="button" style="background:#6f5547">📤 Share PDF file</button><button id="pdf" type="button">⬇ Download PDF</button>`
     : `<button id="share" type="button" style="background:#6f5547">📤 Share PDF file</button><button id="pdf" type="button">⬇ Download PDF</button><a class="wa" id="wa" target="_blank" rel="noopener" style="background:#1fa855">💳 Send invoice + payment link (opens their chat)</a>`}<button id="print" type="button" style="background:#6f5547">Print</button></div>
-  <div style="font-size:.8rem;color:#6f5547" id="tip">${R ? `Tap <b>Send receipt PDF</b>, choose <b>WhatsApp</b>, then tap the customer (their number <b>${esc(phone)}</b> is copied, so you can paste it in WhatsApp's search). The message with the tracking link and receipt link goes with the PDF.` : `Tap <b>Send invoice + payment link</b>: WhatsApp opens in the customer's chat with a message that has the <b>payment link</b> (payment numbers, amount and an "I've paid" button), the tracking link, and a link to view or download this ${DOC.toLowerCase()} as a PDF. Want the PDF file too? Tap <b>Share PDF file</b> after.`}</div>
+  <div style="font-size:.8rem;color:#6f5547" id="tip">${R ? `Tap <b>Send receipt link</b>: WhatsApp opens in ${esc(name.split(" ")[0])}'s chat with a thank-you message, the tracking link and a link to view or download this receipt as a PDF. Want the PDF file in the chat too? Tap <b>Share PDF file</b> after.` : `Tap <b>Send invoice + payment link</b>: WhatsApp opens in the customer's chat with a message that has the <b>payment link</b> (payment numbers, amount and an "I've paid" button), the tracking link, and a link to view or download this ${DOC.toLowerCase()} as a PDF. Want the PDF file too? Tap <b>Share PDF file</b> after.`}</div>
 </div>
 <div class="sheet">
   <img class="wm" src="${LOGOS.watermark || esc(site) + "/assets/img/logo-watermark.jpg"}" alt="">
@@ -549,7 +550,7 @@ body.pdfmode .top,body.pdfmode .cols{display:flex}body.pdfmode .cols{display:gri
   <p class="terms">${esc(terms)}</p>
 </div>
 ${RO ? `<div class="bar"><button class="pdfb" type="button" id="pdf2" style="flex:1">⬇ Download ${R ? "receipt" : "invoice"} PDF</button><button id="share2" hidden></button><a id="wa2" hidden></a></div>`
-      : R ? `<div class="bar"><button class="pdfb" type="button" id="pdf2">⬇ PDF</button><button class="wa" type="button" id="share2">📤 Send receipt PDF</button><a id="wa2" hidden></a></div>`
+      : R ? `<div class="bar"><button class="pdfb" type="button" id="pdf2">⬇ PDF</button><a class="wa" id="wa2" target="_blank" rel="noopener">💬 Send receipt link</a><button id="share2" hidden></button></div>`
       : `<div class="bar"><button class="pdfb" type="button" id="pdf2">⬇ PDF</button><a class="wa" id="wa2" target="_blank" rel="noopener">💳 Send payment link</a><button id="share2" hidden></button></div>`}
 <script>
 const D=${JSON.stringify(data).replace(/</g, "\\u003c")};
@@ -577,7 +578,7 @@ function draw(){
   const n=$("noteIn").value.trim(); $("noteBox").hidden=!n; $("noteOut").textContent=n;
   const ph="233"+String(D.phone).replace(/^0/,"");
   const due=D.isE?Math.round(tot*D.pct)/100:tot, link=D.site+"/pay.html?ref="+encodeURIComponent(D.payRef)+"&amt="+due+(D.isE?"&for=deposit&full="+tot:"")+(D.code?"&t="+encodeURIComponent(D.code):"")+(D.pendDate?"&d="+D.pendDate:"");
-  const msg=(D.receipt&&D.isE) ? "Hello "+D.name.split(" ")[0]+", thank you! Here is your receipt for booking "+D.ref+" from "+D.biz+".\\nAmount received: "+fmt(D._paid)+" by "+D.method+".\\nBalance remaining: "+fmt(D._bal)+(D._bal>0?" (due "+D.balDue+")":"")+(D.trackC?"\\n\\nTrack your booking:\\n"+D.trackC:"")+"\\n\\nThank you for booking with us!" : D.receipt ? "Hello "+D.name.split(" ")[0]+", thank you! Here is your receipt for order "+D.ref+" from "+D.biz+".\\nAmount paid: "+fmt(tot)+" by "+D.method+".\\nPaid on: "+D.paidOn+"\\n\\nWe'll be in touch about your "+(D.delivery?"delivery":"pick-up")+". Thank you for choosing us!"+(D.trackC?"\\n\\nTrack your order:\\n"+D.trackC:"") : "Hello "+D.name.split(" ")[0]+", here is your invoice "+D.ref+" from "+D.biz+".\\nTotal: "+fmt(tot)+(D.isE?"\\n"+D.pct+"% deposit to book: "+fmt(due)+"\\nBalance due: "+D.balDue:"")+"\\n\\nReference:\\n"+D.payRef+"\\n\\n💳 Tap this link to pay (it has the payment numbers, the amount and an \\"I've paid\\" button):\\n"+link+(D.trackI?"\\n\\n📍 Track your "+(D.isE?"booking":"order")+":\\n"+D.trackI:"")+"\\n\\nThank you!";
+  const msg=(D.receipt&&D.isE) ? "Hello "+D.name.split(" ")[0]+", thank you! Here is your receipt for booking "+D.ref+" from "+D.biz+".\\nAmount received: "+fmt(D._paid)+" by "+D.method+".\\nBalance remaining: "+fmt(D._bal)+(D._bal>0?" (due "+D.balDue+")":"")+(D.trackC?"\\n\\n📍 Track your booking:\\n"+D.trackC:"")+"\\n\\nThank you for booking with us!" : D.receipt ? "Hello "+D.name.split(" ")[0]+", thank you! Here is your receipt for order "+D.ref+" from "+D.biz+".\\nAmount paid: "+fmt(tot)+" by "+D.method+".\\nPaid on: "+D.paidOn+"\\n\\nWe'll be in touch about your "+(D.delivery?"delivery":"pick-up")+". Thank you for choosing us!"+(D.trackC?"\\n\\n📍 Track your order:\\n"+D.trackC:"") : "Hello "+D.name.split(" ")[0]+", here is your invoice "+D.ref+" from "+D.biz+".\\nTotal: "+fmt(tot)+(D.isE?"\\n"+D.pct+"% deposit to book: "+fmt(due)+"\\nBalance due: "+D.balDue:"")+"\\n\\nReference:\\n"+D.payRef+"\\n\\n💳 Tap this link to pay (it has the payment numbers, the amount and an \\"I've paid\\" button):\\n"+link+(D.trackI?"\\n\\n📍 Track your "+(D.isE?"booking":"order")+":\\n"+D.trackI:"")+"\\n\\nThank you!";
   $("wa").href="https://wa.me/"+ph+"?text="+encodeURIComponent(msg); $("wa2").href=$("wa").href;
   try{localStorage.setItem(key,JSON.stringify({recv:$("recv")?$("recv").value:"",prev:$("prev")?$("prev").value:"",fee:$("fee").value,disc:$("disc").value,quote:$("quote")?$("quote").value:"",noteIn:$("noteIn").value}))}catch(e){}
 }
@@ -592,7 +593,7 @@ async function sendLink(e){
       f:$("fee").value,d:$("disc").value,q:$("quote")?$("quote").value:"",n:$("noteIn").value,r:$("recv")?$("recv").value:"",p:$("prev")?$("prev").value:""})});
     const j=await r.json(); if(!r.ok) throw new Error(j.error||"Could not create the link");
     const base=decodeURIComponent(($("wa").getAttribute("href")||"").split("?text=")[1]||"");
-    const msg=base+"\\n\\nView or download your "+(D.receipt?"receipt":"invoice")+" (PDF):\\n"+j.url;
+    const msg=base+"\\n\\n📄 View or download your "+(D.receipt?"receipt":"invoice")+" (PDF):\\n"+j.url;
     const url="https://wa.me/233"+String(D.phone).replace(/^0/,"")+"?text="+encodeURIComponent(msg);
     if(win) win.location.href=url; else location.href=url;
   }catch(err){ if(win) win.close(); $("tip").textContent="Could not send: "+err.message; window.scrollTo({top:0,behavior:"smooth"}); }
