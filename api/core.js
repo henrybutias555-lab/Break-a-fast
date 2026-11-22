@@ -277,8 +277,10 @@ function createApp(cfg) {
     return `<details class="owner" open><summary>Owner: update order progress</summary>
       <p style="margin:6px 0 10px;font-size:.9rem">Tap a step when it happens. It turns green on the customer's tracker and opens their WhatsApp chat with an update to send.</p>
       <div class="pgs">${btn("pr", "👩‍🍳")}${btn("od", isE ? "🎪" : pick ? "🛍️" : "🚚")}${btn("dn", "✅")}</div><div id="pg-msg" style="font-size:.85rem;color:#2f7d4a;margin-top:6px"></div></details>
-      <script>document.querySelectorAll(".pg").forEach(function(a){a.addEventListener("click",function(){try{fetch("/api/progress",{method:"POST",keepalive:true,headers:{"Content-Type":"application/json"},body:JSON.stringify({code:${JSON.stringify(code)},k:${JSON.stringify(ownerKey(code))},s:a.dataset.s})});}catch(e){}
-      a.classList.add("done");document.getElementById("pg-msg").textContent="✓ "+a.textContent.trim()+" saved. Send the WhatsApp message so the customer gets the update.";});});</script>`;
+      <script>document.querySelectorAll(".pg").forEach(function(a){a.addEventListener("click",async function(ev){ev.preventDefault();var m=document.getElementById("pg-msg"),w=window.open("about:blank","_blank");
+      try{var r=await fetch("/api/progress",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:${JSON.stringify(code)},k:${JSON.stringify(ownerKey(code))},s:a.dataset.s})});var j=await r.json();if(!r.ok)throw new Error(j.error||"Could not save");
+      a.classList.add("done");m.style.color="#2f7d4a";m.textContent="✓ "+a.textContent.trim()+" saved. Send the WhatsApp message so the customer gets the update.";if(w)w.location.href=a.href;else location.href=a.href;}
+      catch(e){if(w)w.close();m.style.color="#b3261e";m.textContent="✗ "+e.message+(/cancel/i.test(e.message)?" Refresh this page.":"");}});});</script>`;
   }
   function verifyPage(x, codeForInvoice = "", owner = false, base = "") {
     const row = (k, v) => `<tr><th>${esc(k)}</th><td>${v}</td></tr>`;
@@ -396,8 +398,9 @@ function createApp(cfg) {
     if (KV) { try { await KV.set("st:" + ref, s); } catch (e) { console.error("status save failed:", e.message); } return; }
     try { if (await storeReady()) await storeCall({ action: "set", ref, s }); } catch (e) { console.error("status save failed:", e.message); }
   }
-  const CX_BANNER = `<div style="background:#b3261e;color:#fff;padding:14px 16px;font:800 1.05rem system-ui,sans-serif;text-align:center;position:relative;z-index:50">❌ CANCELLED BY THE CUSTOMER · do not prepare or take payment for this order</div>`;
-  const markCx = async (html, x) => (x && (await getStatus(x.ref)) === "x") ? html.replace("<body>", "<body>" + CX_BANNER) : html;
+  const CX_BANNER = `<div style="background:#b3261e;color:#fff;padding:14px 16px;font:800 1.05rem system-ui,sans-serif;text-align:center;position:relative;z-index:50">❌ CANCELLED · This order was cancelled by the customer. Nothing will be prepared and no payment should be made.</div>`;
+  const markCx = async (html, x) => (x && (await getStatus(x.ref)) === "x")
+    ? html.replace("<body>", "<body>" + CX_BANNER + `<style>.tools,.bar,.owner,.pgs,a.inv{display:none!important}</style>`) : html;
   // small extra memory (same store as the status): used to stop repeated "I've paid" reports
   const memo = new Map();
   async function kvGet(k) { if (memo.has(k)) return memo.get(k); let v = ""; if (KV) { try { v = (await KV.get(k)) || ""; } catch (e) { return ""; } } memo.set(k, v); return v; }
@@ -675,7 +678,7 @@ async function sharePdf(btn){
   const done=busy(btn,"Preparing…");
   try{
     const docLink=(D.ownerKey&&D.code) ? fetch("/api/doc",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:D.code,k:D.ownerKey,kind:D.receipt?"r":"i",
-      f:$("fee").value,d:$("disc").value,q:$("quote")?$("quote").value:"",n:$("noteIn").value,r:$("recv")?$("recv").value:"",p:$("prev")?$("prev").value:""})}).then(r=>r.json()).then(j=>j.url||"").catch(()=>"") : Promise.resolve("");
+      f:$("fee").value,d:$("disc").value,q:$("quote")?$("quote").value:"",n:$("noteIn").value,r:$("recv")?$("recv").value:"",p:$("prev")?$("prev").value:""})}).then(r=>r.json()).then(j=>(j.error&&/cancel/i.test(j.error))?Promise.reject(new Error(j.error+" Refresh this page.")):(j.url||""),()=>"") : Promise.resolve("");
     const blob=await makePdf("blob"), dl=await docLink;
     const file=new File([blob],D.doc+"-"+D.ref+".pdf",{type:"application/pdf"});
     const text=decodeURIComponent(($("wa").getAttribute("href")||"").split("?text=")[1]||"")+(dl?"\\n\\nView or download your "+(D.receipt?"receipt":"invoice")+":\\n"+dl:"");
@@ -764,8 +767,8 @@ draw(); setTimeout(draw,300);
       if (req.method === "GET" && p.startsWith("/v/")) {
         const t = decodeURIComponent(p.slice(3)).replace(/[^0-9A-Za-z._-]/g, "");
         const k = new URLSearchParams(req.search || "").get("k");
-        const xv = t.includes(".") ? open(t) : openShort(t);
-        return { ...out(200, await markCx(verifyPage(xv, t, okOwner(t, k), base), xv), "text/html"), headers: {} };
+        const xv = t.includes(".") ? open(t) : openShort(t), cx = xv && (await getStatus(xv.ref)) === "x";
+        return { ...out(200, await markCx(verifyPage(xv, t, okOwner(t, k) && !cx, base), xv), "text/html"), headers: {} };
       }
       if (req.method === "GET" && p.startsWith("/t/")) {
         const t = decodeURIComponent(p.slice(3)).replace(/[^0-9A-Za-z._-]/g, "");
@@ -838,6 +841,7 @@ draw(); setTimeout(draw,300);
           const code = String(b.code || "").replace(/[^0-9A-Za-z]/g, "");
           need(okOwner(code, b.k), "Please open this page from the link in your email.");
           need(openShort(code), "This order link is not valid.");
+          need((await getStatus(openShort(code).ref)) !== "x", "The customer cancelled this order.");
           const num = (v) => { const n = Math.max(0, Math.round(Number(v) * 100) / 100); return Number.isFinite(n) && n < 1e7 ? String(n) : "0"; };
           const note = Buffer.from(str(b.n, 120)).toString("base64url");
           const body = [b.kind === "r" ? "r" : "i", code, num(b.f), num(b.d), num(b.q), num(b.r), num(b.p), note].join("~");
