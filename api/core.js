@@ -433,6 +433,7 @@ h1{margin:0 0 4px;color:#3b1f14;font-size:1.5rem}.ref{color:#6f5547}.big{font-si
       pendDate: !isE && x.c.tm === PENDING ? x.c.d : "",
       ro: RO, ownerKey: opts.owner && code ? ownerKey(code) : "", api: "",
       trackI: opts.base && code ? trackUrl(opts.base, code, "i") : "",
+      trackC: opts.base && code ? trackUrl(opts.base, code, "c") : "",
       confirmed: !!x.cf, reported: isE && x.pr ? x.pr.amt : 0, prKind: isE && x.pr ? x.pr.k : "", code
     };
     const pay = METHODS.map((m) => `<tr><td>${esc(m.name)}${m.kind === "bank" ? " · " + esc(m.bank) : ""}</td><td><b>${esc(m.number)}</b></td><td>${esc(m.accountName)}</td></tr>`).join("");
@@ -449,6 +450,7 @@ h1{margin:0 0 4px;color:#3b1f14;font-size:1.5rem}.ref{color:#6f5547}.big{font-si
 <title>${DOC} ${esc(x.ref)} | Break-a-Fast</title><style>
 *{box-sizing:border-box}body{margin:0;font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;background:#efe6d8;color:#2a1710}
 .tools{max-width:820px;margin:16px auto 0;padding:14px 16px;background:#fff;border-radius:14px;display:grid;gap:10px}
+.btn2{display:inline-block;margin-top:8px;background:#1fa855;color:#fff!important;padding:9px 14px;border-radius:999px;font-weight:800;text-decoration:none}
 .tools h2{margin:0;font-size:1rem;color:#3b1f14}.tools .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .tools label{font-size:.85rem;font-weight:700;color:#6f5547;display:grid;gap:4px}
 .tools input,.tools textarea{font:inherit;padding:10px;border:2px solid #e8d6bd;border-radius:10px;width:100%}
@@ -493,7 +495,7 @@ body.pdfmode .top,body.pdfmode .cols{display:flex}body.pdfmode .cols{display:gri
   <div class="btns">${R
     ? `<button id="share" type="button" style="background:#1fa855">📤 Send receipt PDF to ${esc(name.split(" ")[0])}</button><button id="pdf" type="button">⬇ Download PDF</button><a id="wa" hidden></a>`
     : `<button id="share" type="button" style="background:#6f5547">📤 Share PDF file</button><button id="pdf" type="button">⬇ Download PDF</button><a class="wa" id="wa" target="_blank" rel="noopener" style="background:#1fa855">💬 Send to customer (opens their chat)</a>`}<button id="print" type="button" style="background:#6f5547">Print</button></div>
-  <div style="font-size:.8rem;color:#6f5547" id="tip">${R ? `Tap <b>Send receipt PDF</b>, choose <b>WhatsApp</b>, then tap the customer (their number <b>${esc(phone)}</b> is copied, so you can paste it in WhatsApp's search).` : `Tap <b>Send to customer</b>: WhatsApp opens in the customer's chat with the message and a link to view/download this ${DOC.toLowerCase()} as a PDF.`}</div>
+  <div style="font-size:.8rem;color:#6f5547" id="tip">${R ? `Tap <b>Send receipt PDF</b>, choose <b>WhatsApp</b>, then tap the customer (their number <b>${esc(phone)}</b> is copied, so you can paste it in WhatsApp's search). The message with the tracking link and receipt link goes with the PDF.` : `Tap <b>Send to customer</b>: WhatsApp opens in the customer's chat with the message and a link to view/download this ${DOC.toLowerCase()} as a PDF.`}</div>
 </div>
 <div class="sheet">
   <img class="wm" src="${LOGOS.watermark || esc(site) + "/assets/img/logo-watermark.jpg"}" alt="">
@@ -541,7 +543,7 @@ function draw(){
   const n=$("noteIn").value.trim(); $("noteBox").hidden=!n; $("noteOut").textContent=n;
   const ph="233"+String(D.phone).replace(/^0/,"");
   const due=D.isE?Math.round(tot*D.pct)/100:tot, link=D.site+"/pay.html?ref="+encodeURIComponent(D.payRef)+"&amt="+due+(D.isE?"&for=deposit&full="+tot:"")+(D.code?"&t="+encodeURIComponent(D.code):"")+(D.pendDate?"&d="+D.pendDate:"");
-  const msg=(D.receipt&&D.isE) ? "Hello "+D.name.split(" ")[0]+", thank you! Here is your receipt for booking "+D.ref+" from "+D.biz+".\\nAmount received: "+fmt(D._paid)+" by "+D.method+".\\nBalance remaining: "+fmt(D._bal)+(D._bal>0?" (due "+D.balDue+")":"")+"\\n\\nThank you for booking with us!" : D.receipt ? "Hello "+D.name.split(" ")[0]+", thank you! Here is your receipt for order "+D.ref+" from "+D.biz+".\\nAmount paid: "+fmt(tot)+" by "+D.method+".\\nPaid on: "+D.paidOn+"\\n\\nWe'll be in touch about your "+(D.delivery?"delivery":"pick-up")+". Thank you for choosing us!" : "Hello "+D.name.split(" ")[0]+", here is your invoice "+D.ref+" from "+D.biz+".\\nTotal: "+fmt(tot)+(D.isE?"\\n"+D.pct+"% deposit to book: "+fmt(due)+"\\nBalance due: "+D.balDue:"")+"\\n\\nReference:\\n"+D.payRef+"\\n\\nTap to copy the reference and payment numbers:\\n"+link+(D.trackI?"\\n\\nTrack your order:\\n"+D.trackI:"")+"\\n\\nThank you!";
+  const msg=(D.receipt&&D.isE) ? "Hello "+D.name.split(" ")[0]+", thank you! Here is your receipt for booking "+D.ref+" from "+D.biz+".\\nAmount received: "+fmt(D._paid)+" by "+D.method+".\\nBalance remaining: "+fmt(D._bal)+(D._bal>0?" (due "+D.balDue+")":"")+(D.trackC?"\\n\\nTrack your booking:\\n"+D.trackC:"")+"\\n\\nThank you for booking with us!" : D.receipt ? "Hello "+D.name.split(" ")[0]+", thank you! Here is your receipt for order "+D.ref+" from "+D.biz+".\\nAmount paid: "+fmt(tot)+" by "+D.method+".\\nPaid on: "+D.paidOn+"\\n\\nWe'll be in touch about your "+(D.delivery?"delivery":"pick-up")+". Thank you for choosing us!"+(D.trackC?"\\n\\nTrack your order:\\n"+D.trackC:"") : "Hello "+D.name.split(" ")[0]+", here is your invoice "+D.ref+" from "+D.biz+".\\nTotal: "+fmt(tot)+(D.isE?"\\n"+D.pct+"% deposit to book: "+fmt(due)+"\\nBalance due: "+D.balDue:"")+"\\n\\nReference:\\n"+D.payRef+"\\n\\nTap to copy the reference and payment numbers:\\n"+link+(D.trackI?"\\n\\nTrack your order:\\n"+D.trackI:"")+"\\n\\nThank you!";
   $("wa").href="https://wa.me/"+ph+"?text="+encodeURIComponent(msg); $("wa2").href=$("wa").href;
   try{localStorage.setItem(key,JSON.stringify({recv:$("recv")?$("recv").value:"",prev:$("prev")?$("prev").value:"",fee:$("fee").value,disc:$("disc").value,quote:$("quote")?$("quote").value:"",noteIn:$("noteIn").value}))}catch(e){}
 }
@@ -599,15 +601,18 @@ $("pdf").addEventListener("click",async()=>{
 });
 async function sharePdf(btn){
   if(!ready()) return;
-  try{ navigator.clipboard && navigator.clipboard.writeText(String(D.phone)); }catch(e){}
+  try{ navigator.clipboard && navigator.clipboard.writeText(String(D.phone)).catch(()=>{}); }catch(e){}
   const done=busy(btn,"Preparing…");
   try{
-    const blob=await makePdf("blob");
+    const docLink=(D.ownerKey&&D.code) ? fetch("/api/doc",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:D.code,k:D.ownerKey,kind:D.receipt?"r":"i",
+      f:$("fee").value,d:$("disc").value,q:$("quote")?$("quote").value:"",n:$("noteIn").value,r:$("recv")?$("recv").value:"",p:$("prev")?$("prev").value:""})}).then(r=>r.json()).then(j=>j.url||"").catch(()=>"") : Promise.resolve("");
+    const blob=await makePdf("blob"), dl=await docLink;
     const file=new File([blob],D.doc+"-"+D.ref+".pdf",{type:"application/pdf"});
-    const text=decodeURIComponent(($("wa").getAttribute("href")||"").split("?text=")[1]||"");
+    const text=decodeURIComponent(($("wa").getAttribute("href")||"").split("?text=")[1]||"")+(dl?"\\n\\nView or download your "+(D.receipt?"receipt":"invoice")+":\\n"+dl:"");
+    const chat="https://wa.me/233"+String(D.phone).replace(/^0/,"")+"?text="+encodeURIComponent(text);
     if(navigator.canShare&&navigator.canShare({files:[file]})){
-      await navigator.share(D.receipt ? {files:[file],title:D.doc+" "+D.ref} : {files:[file],text,title:D.doc+" "+D.ref});
-      $("tip").innerHTML="Sent to the share screen. Customer's number "+D.phone+" was copied: paste it in WhatsApp's search if they're not in recent chats.";
+      await navigator.share({files:[file],text,title:D.doc+" "+D.ref});
+      $("tip").innerHTML="Sent to the share screen. Customer's number "+D.phone+" was copied: paste it in WhatsApp's search if they're not in recent chats.<br>If the message with the links didn't go with the PDF: <a class=btn2 href='"+e(chat)+"' target=_blank rel=noopener>Send the links on WhatsApp</a>";
     } else {
       const u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download=file.name;document.body.appendChild(a);a.click();a.remove();
       $("tip").textContent="Your phone can't share files directly here, so the PDF was downloaded. WhatsApp is opening: attach the PDF in the chat.";
