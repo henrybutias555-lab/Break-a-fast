@@ -398,6 +398,11 @@ function createApp(cfg) {
   }
   const CX_BANNER = `<div style="background:#b3261e;color:#fff;padding:14px 16px;font:800 1.05rem system-ui,sans-serif;text-align:center;position:relative;z-index:50">❌ CANCELLED BY THE CUSTOMER · do not prepare or take payment for this order</div>`;
   const markCx = async (html, x) => (x && (await getStatus(x.ref)) === "x") ? html.replace("<body>", "<body>" + CX_BANNER) : html;
+  // small extra memory (same store as the status): used to stop repeated "I've paid" reports
+  const memo = new Map();
+  async function kvGet(k) { if (memo.has(k)) return memo.get(k); let v = ""; if (KV) { try { v = (await KV.get(k)) || ""; } catch (e) { return ""; } } memo.set(k, v); return v; }
+  function kvSet(k, v) { memo.set(k, v); if (memo.size > 5000) memo.clear(); return KV ? KV.set(k, v).catch((e) => console.error("save failed:", e.message)) : Promise.resolve(); }
+  const ALREADY = "You've already told us about this payment. We're checking it and will send your receipt on WhatsApp. No need to tap again.";
   const bestStage = (a, b) => (a === "x" || b === "x") ? "x" : ((RANK[a] || 0) >= (RANK[b] || 0) ? a : b);
 
   /* ---------- customer tracking page ---------- */
@@ -812,7 +817,10 @@ draw(); setTimeout(draw,300);
           const tk = String(b.t || "").replace(/[^0-9A-Za-z._-]/g, "");
           const o = b.token ? open(b.token) : tk ? (tk.includes(".") ? open(tk) : openShort(tk)) : null;
           need(o && o.t === "o", "This order could not be verified. Please message us on WhatsApp.");
-          need((await getStatus(o.ref)) !== "x", "This order was cancelled. Please place a new order or message us on WhatsApp.");
+          const st0 = await getStatus(o.ref);
+          need(st0 !== "x", "This order was cancelled. Please place a new order or message us on WhatsApp.");
+          if ((RANK[st0] || 0) >= 3 || (await kvGet("paid:" + o.ref))) return out(409, { error: ALREADY, already: true, ref: o.ref });
+          kvSet("paid:" + o.ref, "1");
           const txn = str(b.txn, 40), from = str(b.from, 40);   // optional (no longer asked on the site)
           if (o.c.tm === PENDING) {
             const tm = str(b.time, 40);
@@ -880,11 +888,16 @@ draw(); setTimeout(draw,300);
           const t = String(b.t || "").replace(/[^0-9A-Za-z._-]/g, "");
           const e = t.includes(".") ? open(t) : openShort(t);
           need(e && e.t === "e", "This booking link is not valid. Please message us on WhatsApp.");
-          need((await getStatus(e.ref)) !== "x", "This booking was cancelled. Please message us on WhatsApp.");
+          const st0 = await getStatus(e.ref);
+          need(st0 !== "x", "This booking was cancelled. Please message us on WhatsApp.");
           const k = ["deposit", "full", "other"].includes(b.kind) ? b.kind : "other";
           const amt = Math.round(Number(b.amount) * 100) / 100;
           need(amt > 0 && amt <= 1000000, "Please enter the amount you paid.");
           const pm = method(b.payment) ? b.payment : e.pm;
+          // one report per payment: blocked while the last one is unconfirmed, or if it's the same payment again
+          const last = await kvGet("paid:" + e.ref), sig = k + ":" + amt;
+          if (st0 === "pd" || last === sig || (last && !KV && st0 !== "c")) return out(409, { error: ALREADY, already: true, ref: e.ref });
+          kvSet("paid:" + e.ref, sig);
           const e2 = { ...e, pr: { amt, k, pm, at: new Date().toISOString() } };
           const v = `${base}/v/${shortCode(e)}`;
           waits.push(sendAlert("eventpaid", e2, v, `${base}/r/${seal(e2)}`), setStatus(e.ref, "pd"));

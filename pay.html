@@ -22,7 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Nunito:wght@400;700;800&family=Pacifico&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=151c68f9">
+<link rel="stylesheet" href="css/styles.css?v=ea8e8002">
 <script src="js/config.js?v=4615361c" defer></script>
 <script src="js/products.js?v=8b8feca8" defer></script>
 <script src="js/app.js?v=01941a60" defer></script>
@@ -102,6 +102,13 @@
         document.getElementById("time-hint").textContent = "For " + new Date(pendDate + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" }) + ". Shown once you tick that you've paid.";
         ok.addEventListener("change", () => (tf.hidden = !ok.checked));
       }
+      const PK = "baf_paid_" + ref, markPaid = () => BAF.store.set(PK, Date.now());
+      if (BAF.store.get(PK, 0)) {
+        f.hidden = true;
+        document.getElementById("p-result").innerHTML = `<div class="notice ok"><b>Payment already reported.</b> You've told us you paid for ${esc(ref)}. We're checking it and will send your receipt on WhatsApp.${isOrder ? "" : ` <a href="#" id="p-again">Paying the balance or another amount?</a>`}</div>`;
+        const ag = document.getElementById("p-again");
+        if (ag) ag.addEventListener("click", (e) => { e.preventDefault(); f.hidden = false; document.getElementById("p-result").innerHTML = ""; });
+      }
       const upd = () => { other.hidden = kind().value !== "other"; };
       f.querySelectorAll("input[name=kind]").forEach((r) => r.addEventListener("change", upd)); upd();
       ok.addEventListener("change", () => (send.disabled = !ok.checked));
@@ -117,8 +124,9 @@
             ? await BAF.api("/api/pay", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t, payment: pmv, time: tf.hidden ? "" : document.getElementById("p-time").value }) })
             : await BAF.api("/api/event-paid", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t, kind: k.value, amount, payment: pmv }) });
           const j = await r.json().catch(() => ({}));
+          if (j.already) { f.hidden = true; markPaid(); document.getElementById("p-result").innerHTML = `<div class="notice ok"><b>Payment already reported.</b> ${esc(j.error)}</div>`; return; }
           if (!r.ok) throw new Error(j.error || "Could not send. Please try again.");
-          f.hidden = true;
+          f.hidden = true; markPaid();
           document.getElementById("p-result").innerHTML = `<div class="notice ok"><b>Thank you!</b> We've been told about your payment of ${money(amount)} for ${esc(ref)}${!tf.hidden ? ", delivery " + esc(document.getElementById("p-time").value) : ""}. We'll check it and send your receipt on WhatsApp.</div>`;
         } catch (err) {
           document.getElementById("p-result").innerHTML = `<div class="notice warn"><b>${esc(err.message)}</b></div>`;

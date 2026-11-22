@@ -155,6 +155,7 @@ document.addEventListener("DOMContentLoaded", () => {
           body: JSON.stringify({ token: order.token, payment: pm.id, time: f.time ? f.time.value : "" })
         });
         const j = await r.json().catch(() => ({}));
+        if (j.already) { order.status = "Awaiting Confirmation"; save(); send.insertAdjacentHTML("afterend", `<div id="pay-err" class="notice ok" style="flex-basis:100%"><b>Payment already reported.</b> ${esc(j.error)}</div>`); send.textContent = "Already reported"; return; }
         if (!r.ok) throw new Error(j.error || "Could not save your payment confirmation.");
         Object.assign(order, j.order, { token: j.token, verifyUrl: j.verifyUrl, message: j.message, status: "Awaiting Confirmation" });
         c = order.c;

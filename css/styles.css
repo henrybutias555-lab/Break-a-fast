@@ -247,6 +247,7 @@ p { margin: 0 0 1em; }
 .panel { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); }
 .panel h2 { font-size: 1.35rem; }
 .step-pane[hidden] { display: none; }
+[hidden] { display: none !important; }
 .step-nav { display: flex; gap: 10px; justify-content: space-between; margin-top: 20px; flex-wrap: wrap-reverse; }
 .step-nav .btn { flex: 1; min-width: 150px; }
 .line-item { display: grid; grid-template-columns: 64px 1fr; gap: 12px; padding: 14px 0; border-bottom: 1px dashed var(--line); }
