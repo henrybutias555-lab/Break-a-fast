@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Track Your Order | Break-a-Fast Bistro and Bar</title>
+<meta name="description" content="See when your Break-a-Fast order or event is coming.">
+<meta property="og:title" content="Track your order | Break-a-Fast Bistro &amp; Bar">
+<meta property="og:description" content="See when your Break-a-Fast order or event is coming.">
+<meta property="og:image" content="https://break-a-fast.onrender.com/assets/img/share.jpg">
+<meta name="theme-color" content="#3b1f14">
+<link rel="icon" href="assets/img/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Nunito:wght@400;700;800&family=Pacifico&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css?v=151c68f9">
+<script src="js/config.js?v=4615361c" defer></script>
+<script src="js/products.js?v=8b8feca8" defer></script>
+<script src="js/app.js?v=01941a60" defer></script>
+</head>
+<body>
+<main id="main" class="wrap" style="max-width:720px">
+  <div class="page-head">
+    <h1>Track your order</h1>
+    <p>See when your order or event is coming. Use the <b>Track</b> link we send you on WhatsApp, or the QR code on your receipt.</p>
+  </div>
+  <section class="panel">
+    <h2 style="font-size:1.25rem">Orders from this phone</h2>
+    <div id="list"></div>
+  </section>
+  <section class="panel" style="margin-top:16px">
+    <h2 style="font-size:1.25rem">Have a tracking link?</h2>
+    <form class="form" id="go">
+      <div class="field"><label for="link">Paste your tracking link</label><input id="link" placeholder="https://break-a-fast-api.onrender.com/t/…"><div class="err">Please paste the full tracking link from WhatsApp.</div></div>
+      <button class="btn" type="submit">Open tracker</button>
+    </form>
+    <p class="small muted" style="margin:10px 0 0">No link? <a data-wa="Hello Break-a-Fast! Please send me the tracking link for my order." target="_blank" rel="noopener">Ask us on WhatsApp</a> with your reference (BAF-… or EVT-…).</p>
+  </section>
+</main>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const { esc, store } = BAF;
+    const orders = Object.values(store.get("baf_orders_v1", {})).filter((o) => o && o.ref && o.c);
+    const today = new Date().toISOString().slice(0, 10);
+    const nice = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+    orders.sort((a, b) => (a.c.d < b.c.d ? -1 : 1));
+    document.getElementById("list").innerHTML = orders.length ? orders.map((o) => {
+      const d = Math.round((Date.parse(o.c.d) - Date.parse(today)) / 864e5);
+      const cd = d > 1 ? `in ${d} days` : d === 1 ? "tomorrow" : d === 0 ? "today" : "completed";
+      const link = o.trackUrl || (o.verifyUrl ? o.verifyUrl.replace("/v/", "/t/").split("?")[0] : "");
+      return `<div class="review-block"><h3 style="margin:0">${esc(o.ref)} <span class="status ${d >= 0 ? "pending" : "awaiting"}">${cd}</span></h3>
+        <div class="small">${esc(nice(o.c.d))} · ${esc(o.c.f)}</div>
+        <div class="small muted">${(o.it || []).map((i) => esc(i[3] + " × " + i[0])).join(", ")}</div>
+        ${link ? `<a class="btn btn-sm" style="margin-top:8px" href="${esc(link)}">📍 Track</a>` : ""}</div>`;
+    }).join("") : `<p class="muted" style="margin:0">No orders placed from this phone yet. Event bookings and orders from other phones: use the tracking link we sent you.</p>`;
+    document.getElementById("go").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const v = document.getElementById("link").value.trim(), f = document.getElementById("link").closest(".field");
+      const ok = /^https:\/\/break-a-fast-api\.onrender\.com\/t\/[0-9A-Za-z._-]+/.test(v) || /^https:\/\/orders\.break-a-fast\.workers\.dev\/t\//.test(v);
+      f.classList.toggle("invalid", !ok);
+      if (ok) location.href = v;
+    });
+  });
+</script>
+</body>
+</html>

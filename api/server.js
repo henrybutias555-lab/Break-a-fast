@@ -6,6 +6,8 @@ const path = require("path");
 const vm = require("vm");
 const crypto = require("crypto");
 const createApp = require("./core.js");
+const qrcode = require("../assets/vendor/qrcode.js");
+const QR = (text) => { const q = qrcode(0, "M"); q.addData(text); q.make(); return q.createDataURL(4, 2); };
 
 const PORT = process.env.PORT || 8787;
 const SECRET = process.env.SIGNING_SECRET || "";
@@ -20,7 +22,7 @@ const app = createApp({
   ALERT_URL: process.env.ALERT_URL || "",
   ALERT_KEY: process.env.ALERT_KEY || "",
   ALLOWED_ORIGINS: (process.env.ALLOWED_ORIGINS || "https://break-a-fast.onrender.com").split(",").map((s) => s.trim()),
-  W: sandbox.window, crypto, Buffer,
+  W: sandbox.window, crypto, Buffer, QR,
   LOGOS: Object.fromEntries([["header", "logo-invoice.jpg"], ["watermark", "logo-watermark.jpg"]].map(([k, f]) => {
     try { return [k, "data:image/jpeg;base64," + fs.readFileSync(path.join(ROOT, "assets", "img", f)).toString("base64")]; } catch (e) { return [k, ""]; }
   }))

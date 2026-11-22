@@ -6,6 +6,9 @@ function createApp(cfg) {
   // Owner key: an HMAC of the order code, added only to links in the owner's emails.
   const ownerKey = (code) => crypto.createHmac("sha256", SECRET).update("owner:" + code).digest("base64url").slice(0, 22);
   const docSig = (body) => crypto.createHmac("sha256", SECRET).update("doc:" + body).digest("base64url").slice(0, 14);
+  const trackSig = (code, st) => crypto.createHmac("sha256", SECRET).update("track:" + st + ":" + code).digest("base64url").slice(0, 12);
+  const trackUrl = (base, code, st) => `${base}/t/${code}` + (st && st !== "p" ? `?s=${st}&g=${trackSig(code, st)}` : "");
+  const QR = cfg.QR || null;   // (text) => data URL, for the QR on receipts
   const okOwner = (code, k) => { const a = Buffer.from(String(k || "")), g = Buffer.from(ownerKey(code)); return a.length === g.length && crypto.timingSafeEqual(a, g); };  // lets the owner confirm payments from the verify page          // data: URIs for the invoice (no cross-site image loading)
   const C = W.BAF_CONFIG, PRODUCTS = W.BAF_PRODUCTS, GROUPS = W.BAF_EVENT_GROUPS;
   const METHODS = C.paymentMethods;
@@ -336,6 +339,47 @@ function createApp(cfg) {
   </style></head><body><main><h1>Break-a-Fast · Order verification</h1>${body}</main></body></html>`;
   }
 
+  /* ---------- customer tracking page ---------- */
+  function trackPage(x, stage) {
+    const site = ALLOWED_ORIGINS[0] || "";
+    const head = (t, body) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
+<title>${esc(t)} | Break-a-Fast</title><meta property="og:title" content="${esc(t)} · Break-a-Fast"><meta property="og:description" content="Track your Break-a-Fast order."><meta property="og:image" content="${esc(site)}/assets/img/share.jpg">
+<style>*{box-sizing:border-box}body{margin:0;font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;background:#fbf3e6;color:#2a1710}
+header{background:#3b1f14;color:#f2b53a;padding:14px 16px;display:flex;gap:10px;align-items:center;font-weight:800}header img{width:40px;height:40px;border-radius:50%}
+main{max-width:640px;margin:0 auto;padding:18px 16px 40px}.card{background:#fff;border:1px solid #e8d6bd;border-radius:16px;padding:16px;margin-bottom:14px}
+h1{margin:0 0 4px;color:#3b1f14;font-size:1.5rem}.ref{color:#6f5547}.big{font-size:2rem;font-weight:800;color:#a8174f;line-height:1.1}.when{font-weight:700;color:#3b1f14}
+.tl{list-style:none;margin:0;padding:0;display:grid;gap:12px}.tl li{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start;color:#9a8577}
+.tl li::before{content:"";width:22px;height:22px;border-radius:50%;border:3px solid #e8d6bd;background:#fff;margin-top:2px}
+.tl li.done{color:#2a1710}.tl li.done::before{background:#2f7d4a;border-color:#2f7d4a}.tl li.now{color:#a8174f;font-weight:800}.tl li.now::before{border-color:#a8174f;background:#fde8f0}
+.tl b{display:block}.items{margin:0;padding-left:18px}.muted{color:#6f5547;font-size:.9rem}a.btn{display:block;text-align:center;background:#1fa855;color:#fff;font-weight:800;padding:13px;border-radius:999px;text-decoration:none;margin-top:10px}
+</style></head><body><header><img src="${LOGOS.header || esc(site) + "/assets/img/logo-invoice.jpg"}" alt="">Break-a-Fast · Order tracker</header><main>${body}</main></body></html>`;
+    if (!x) return head("Order not found", `<div class="card"><h1>Link not valid</h1><p>This tracking link is incomplete. Please message us on WhatsApp with your order reference.</p><a class="btn" href="https://wa.me/${esc(C.whatsappIntl)}">Chat on WhatsApp</a></div>`);
+    const isE = x.t === "e", date = isE ? x.d : x.c.d, today = ghanaToday();
+    const days = Math.round((Date.parse(date + "T00:00:00Z") - Date.parse(today + "T00:00:00Z")) / 864e5);
+    const tm = isE ? "" : (x.c.tm === PENDING ? "time chosen after payment" : x.c.tm);
+    const rank = { p: 1, i: 2, c: 3 }[stage] || 1;
+    const steps = [
+      ["Order placed", isE ? "We received your event enquiry." : "We received your order.", true],
+      ["Invoice sent", "Your invoice with payment details was sent on WhatsApp.", rank >= 2],
+      [isE ? "Deposit confirmed" : "Payment confirmed", isE ? "Your booking is secured." : "Thank you! Your payment was received.", rank >= 3],
+      [isE ? "Preparing your event" : "Preparing your order", isE ? "We're getting everything ready." : "Freshly made for you.", rank >= 3 && days <= (isE ? 3 : 1)],
+      [isE ? "Event day" : (x.c.f === "Delivery" ? "Delivery day" : "Pick-up day"), niceDate(date) + (tm ? ", " + tm : ""), rank >= 3 && days <= 0]
+    ];
+    const nowIdx = steps.findIndex((s) => !s[2]);
+    const countdown = days > 1 ? `Coming in <span class="big">${days} days</span>` : days === 1 ? `<span class="big">Tomorrow</span>` : days === 0 ? `<span class="big">Today!</span>` : `<span class="big">Completed</span>`;
+    const what = isE ? `<p><b>${esc(x.ty)}</b> · ${esc((x.g ? x.g + " / " : "") + x.pk)}${x.gu ? ", " + esc(x.gu) + " guests" : ""}</p>${x.v ? `<p class="muted">Venue: ${esc(x.v)}</p>` : ""}`
+      : `<ul class="items">${x.it.map((i) => `<li>${i[3]} × ${esc(itemTitle(i))} · ${esc(i[1])}</li>`).join("")}</ul>`;
+    const nextTip = rank === 1 ? "Next: we'll send your invoice on WhatsApp." : rank === 2 ? `Next: pay using reference ${esc(x.ref)}, then tap "I've paid" on your invoice link.` : days > 0 ? "All set. We'll be in touch before the day." : "";
+    return head(`Order ${x.ref}`, `
+      <div class="card"><h1>${isE ? "Your event" : "Your order"}</h1><div class="ref">Reference <b>${esc(x.ref)}</b></div>
+        <p style="margin:12px 0 4px">${countdown}</p><div class="when">${esc(niceDate(date))}${tm ? " · " + esc(tm) : ""}${isE ? "" : " · " + esc(x.c.f)}</div>
+        ${nextTip ? `<p class="muted" style="margin-bottom:0">${nextTip}</p>` : ""}</div>
+      <div class="card"><ol class="tl">${steps.map((s, i) => `<li class="${s[2] ? "done" : i === nowIdx ? "now" : ""}"><span><b>${esc(s[0])}</b>${esc(s[1])}</span></li>`).join("")}</ol></div>
+      <div class="card"><b>${isE ? "Booking" : "Items"}</b>${what}</div>
+      <a class="btn" href="https://wa.me/${esc(C.whatsappIntl)}?text=${encodeURIComponent("Hello Break-a-Fast! About my order " + x.ref + ":")}">Questions? Chat on WhatsApp</a>
+      <p class="muted" style="text-align:center;margin-top:14px">Save this page to check back any time.</p>`);
+  }
+
   /* ---------- printable invoice (owner opens it from the email alert) ---------- */
   function minusWorkingDays(iso, n) {
     const d = new Date(iso + "T12:00:00Z");
@@ -343,6 +387,7 @@ function createApp(cfg) {
     return d.toISOString().slice(0, 10);
   }
   function invoicePage(x, asReceipt = false, code = "", opts = {}) {
+    const trackC = opts.base && code && QR ? trackUrl(opts.base, code, "c") : "";
     const RO = opts.preset || null;           // read-only view for the customer
     if (!x) return verifyPage(null).replace("Order verification", asReceipt ? "Receipt" : "Invoice");
     const R = asReceipt && (x.t === "o" || !!x.pr);  // shop orders after payment, or events with a reported payment
@@ -364,6 +409,7 @@ function createApp(cfg) {
       paidOn: R && x.py && x.py.at ? niceDate(x.py.at.slice(0, 10)) : R && x.pr && x.pr.at ? niceDate(x.pr.at.slice(0, 10)) : niceDate(today),
       pendDate: !isE && x.c.tm === PENDING ? x.c.d : "",
       ro: RO, ownerKey: opts.owner && code ? ownerKey(code) : "", api: "",
+      trackI: opts.base && code ? trackUrl(opts.base, code, "i") : "",
       confirmed: !!x.cf, reported: isE && x.pr ? x.pr.amt : 0, prKind: isE && x.pr ? x.pr.k : "", code
     };
     const pay = METHODS.map((m) => `<tr><td>${esc(m.name)}${m.kind === "bank" ? " · " + esc(m.bank) : ""}</td><td><b>${esc(m.number)}</b></td><td>${esc(m.accountName)}</td></tr>`).join("");
@@ -440,7 +486,7 @@ body.pdfmode .top,body.pdfmode .cols{display:flex}body.pdfmode .cols{display:gri
   <div class="sum" id="sum"></div>
   ${menu}
   <div class="box" id="noteBox" hidden><h3>Note</h3><div class="note" id="noteOut"></div></div>
-  ${R ? `<div class="box"><h3>Payment received</h3><table class="pay"><tr><td>Method</td><td><b>${esc(data.method)}</b></td></tr><tr><td>Reference</td><td><b>${esc(x.ref)}</b></td></tr><tr><td>Paid to</td><td>${esc(METHODS[0].accountName)}</td></tr></table></div><p style="margin-top:14px;font-weight:700;color:#3b1f14">${isE ? "Thank you for booking with us!" : "Thank you for your order!"}</p>` : `<div class="box"><h3>How to pay · use reference <b style="color:#a8174f">${esc(x.ref)}</b></h3><table class="pay">${pay}</table></div>`}
+  ${R ? `<div class="box"><h3>Payment received</h3><table class="pay"><tr><td>Method</td><td><b>${esc(data.method)}</b></td></tr><tr><td>Reference</td><td><b>${esc(x.ref)}</b></td></tr><tr><td>Paid to</td><td>${esc(METHODS[0].accountName)}</td></tr></table></div><p style="margin-top:14px;font-weight:700;color:#3b1f14">${isE ? "Thank you for booking with us!" : "Thank you for your order!"}</p>${trackC ? `<div style="display:flex;gap:12px;align-items:center;margin-top:10px;background:#fbf3e6;border-radius:10px;padding:10px 12px"><img src="${QR(trackC)}" alt="" style="width:92px;height:92px;image-rendering:pixelated;background:#fff;padding:4px;border-radius:6px"><div style="font-size:.88rem"><b style="color:#3b1f14">Track your ${isE ? "event" : "order"}</b><br>Scan to see your ${isE ? "event" : "delivery"} date, countdown and progress.</div></div>` : ""}` : `<div class="box"><h3>How to pay · use reference <b style="color:#a8174f">${esc(x.ref)}</b></h3><table class="pay">${pay}</table></div>`}
   <p class="terms">${esc(terms)}</p>
 </div>
 ${RO ? `<div class="bar"><button class="pdfb" type="button" id="pdf2" style="flex:1">⬇ Download ${R ? "receipt" : "invoice"} PDF</button><button id="share2" hidden></button><a id="wa2" hidden></a></div>`
@@ -472,7 +518,7 @@ function draw(){
   const n=$("noteIn").value.trim(); $("noteBox").hidden=!n; $("noteOut").textContent=n;
   const ph="233"+String(D.phone).replace(/^0/,"");
   const due=D.isE?Math.round(tot*D.pct)/100:tot, link=D.site+"/pay.html?ref="+encodeURIComponent(D.payRef)+"&amt="+due+(D.isE?"&for=deposit&full="+tot:"")+(D.code?"&t="+encodeURIComponent(D.code):"")+(D.pendDate?"&d="+D.pendDate:"");
-  const msg=(D.receipt&&D.isE) ? "Hello "+D.name.split(" ")[0]+", thank you! Here is your receipt for booking "+D.ref+" from "+D.biz+".\\nAmount received: "+fmt(D._paid)+" by "+D.method+".\\nBalance remaining: "+fmt(D._bal)+(D._bal>0?" (due "+D.balDue+")":"")+"\\n\\nThank you for booking with us!" : D.receipt ? "Hello "+D.name.split(" ")[0]+", thank you! Here is your receipt for order "+D.ref+" from "+D.biz+".\\nAmount paid: "+fmt(tot)+" by "+D.method+".\\nPaid on: "+D.paidOn+"\\n\\nWe'll be in touch about your "+(D.delivery?"delivery":"pick-up")+". Thank you for choosing us!" : "Hello "+D.name.split(" ")[0]+", here is your invoice "+D.ref+" from "+D.biz+".\\nTotal: "+fmt(tot)+(D.isE?"\\n"+D.pct+"% deposit to book: "+fmt(due)+"\\nBalance due: "+D.balDue:"")+"\\n\\nReference:\\n"+D.payRef+"\\n\\nTap to copy the reference and payment numbers:\\n"+link+"\\n\\nThank you!";
+  const msg=(D.receipt&&D.isE) ? "Hello "+D.name.split(" ")[0]+", thank you! Here is your receipt for booking "+D.ref+" from "+D.biz+".\\nAmount received: "+fmt(D._paid)+" by "+D.method+".\\nBalance remaining: "+fmt(D._bal)+(D._bal>0?" (due "+D.balDue+")":"")+"\\n\\nThank you for booking with us!" : D.receipt ? "Hello "+D.name.split(" ")[0]+", thank you! Here is your receipt for order "+D.ref+" from "+D.biz+".\\nAmount paid: "+fmt(tot)+" by "+D.method+".\\nPaid on: "+D.paidOn+"\\n\\nWe'll be in touch about your "+(D.delivery?"delivery":"pick-up")+". Thank you for choosing us!" : "Hello "+D.name.split(" ")[0]+", here is your invoice "+D.ref+" from "+D.biz+".\\nTotal: "+fmt(tot)+(D.isE?"\\n"+D.pct+"% deposit to book: "+fmt(due)+"\\nBalance due: "+D.balDue:"")+"\\n\\nReference:\\n"+D.payRef+"\\n\\nTap to copy the reference and payment numbers:\\n"+link+(D.trackI?"\\n\\nTrack your order:\\n"+D.trackI:"")+"\\n\\nThank you!";
   $("wa").href="https://wa.me/"+ph+"?text="+encodeURIComponent(msg); $("wa2").href=$("wa").href;
   try{localStorage.setItem(key,JSON.stringify({recv:$("recv")?$("recv").value:"",prev:$("prev")?$("prev").value:"",fee:$("fee").value,disc:$("disc").value,quote:$("quote")?$("quote").value:"",noteIn:$("noteIn").value}))}catch(e){}
 }
@@ -619,6 +665,16 @@ draw(); setTimeout(draw,300);
         const k = new URLSearchParams(req.search || "").get("k");
         return { ...out(200, verifyPage(t.includes(".") ? open(t) : openShort(t), t, okOwner(t, k)), "text/html"), headers: {} };
       }
+      if (req.method === "GET" && p.startsWith("/t/")) {
+        const t = decodeURIComponent(p.slice(3)).replace(/[^0-9A-Za-z._-]/g, "");
+        const q = new URLSearchParams(req.search || ""), st = q.get("s"), g = q.get("g") || "";
+        const x = t.includes(".") ? open(t) : openShort(t);
+        const code = x ? shortCode(x) : "";
+        let stage = "p";
+        if (x && st && ["i", "c"].includes(st)) { const a = Buffer.from(g), b2 = Buffer.from(trackSig(code, st)); if (a.length === b2.length && crypto.timingSafeEqual(a, b2)) stage = st; }
+        if (x && x.cf) stage = "c";
+        return { ...out(200, trackPage(x, stage), "text/html"), headers: {} };
+      }
       if (req.method === "GET" && p.startsWith("/d/")) {
         const t = decodeURIComponent(p.slice(3)).replace(/[^0-9A-Za-z._~-]/g, "");
         const i = t.lastIndexOf("~"), body = t.slice(0, i), sig = t.slice(i + 1);
@@ -631,17 +687,17 @@ draw(); setTimeout(draw,300);
           if (x && kind === "r" && x.t === "e" && !x.pr) x = { ...x, pr: { amt: Number(r) || 0, k: "other", pm: x.pm, at: new Date().toISOString() } };
           if (x && kind === "r" && x.t === "o" && !x.py) x = { ...x, py: { txn: "", from: "", s: "", at: new Date().toISOString() } };
         }
-        return { ...out(200, invoicePage(x, kind === "r", "", { preset: pre || {} }), "text/html"), headers: {} };
+        return { ...out(200, invoicePage(x, kind === "r", x ? shortCode(x) : "", { preset: pre || {}, base }), "text/html"), headers: {} };
       }
       if (req.method === "GET" && p.startsWith("/r/")) {
         const t = decodeURIComponent(p.slice(3)).replace(/[^0-9A-Za-z._-]/g, "");
         const xr = t.includes(".") ? open(t) : openShort(t);
-        return { ...out(200, invoicePage(xr, true, xr ? shortCode(xr) : "", { owner: t.includes(".") }), "text/html"), headers: {} };
+        return { ...out(200, invoicePage(xr, true, xr ? shortCode(xr) : "", { owner: t.includes("."), base }), "text/html"), headers: {} };
       }
       if (req.method === "GET" && p.startsWith("/i/")) {
         const t = decodeURIComponent(p.slice(3)).replace(/[^0-9A-Za-z._-]/g, "");
         const xi = t.includes(".") ? open(t) : openShort(t);
-        return { ...out(200, invoicePage(xi, false, xi ? shortCode(xi) : "", { owner: t.includes(".") }), "text/html"), headers: {} };
+        return { ...out(200, invoicePage(xi, false, xi ? shortCode(xi) : "", { owner: t.includes("."), base }), "text/html"), headers: {} };
       }
       if (req.method === "POST" && p.startsWith("/api/")) {
         if (limited(req.ip || "?")) return out(429, { error: "Too many requests. Please wait a few minutes." });
@@ -652,7 +708,7 @@ draw(); setTimeout(draw,300);
         if (p === "/api/order") {
           const o = buildOrder(b), token = seal(o), v = `${base}/v/${shortCode(o)}`;
           waits.push(sendAlert("order", o, v, `${base}/i/${token}`));
-          return out(200, { order: o, token, verifyUrl: v, message: orderText(o, v) });
+          return out(200, { order: o, token, verifyUrl: v, message: orderText(o, v), trackUrl: trackUrl(base, shortCode(o), "p") });
         }
         if (p === "/api/pay") {
           const tk = String(b.t || "").replace(/[^0-9A-Za-z._-]/g, "");
@@ -713,7 +769,7 @@ draw(); setTimeout(draw,300);
         if (p === "/api/event") {
           const e = buildEvent(b), v = `${base}/v/${shortCode(e)}`;
           waits.push(sendAlert("event", e, v, `${base}/i/${seal(e)}`));
-          return out(200, { enquiry: e, verifyUrl: v, message: eventText(e, v) });
+          return out(200, { enquiry: e, verifyUrl: v, message: eventText(e, v), trackUrl: trackUrl(base, shortCode(e), "p") });
         }
       }
       return out(404, { error: "Not found" });

@@ -204,6 +204,8 @@ document.addEventListener("DOMContentLoaded", () => {
             <li><div><b>You pay and tap "I've paid"</b>Use the link on the invoice${c.tm === PENDING ? ", then choose your delivery time" : ""}.</div></li>
             <li><div><b>We confirm and send your receipt</b>Then we prepare your order for ${niceDate(c.d)}${c.tm === PENDING ? "" : ", " + esc(c.tm.toLowerCase())}.</div></li>
           </ol>
+          ${order.trackUrl ? `<a class="btn btn-block" style="margin-top:16px" href="${esc(order.trackUrl)}">📍 Track my order</a>
+          <p class="small muted" style="margin-top:6px">Bookmark it, or find it any time under <a href="track.html">Track order</a> on this website.</p>` : ""}
           ${url ? `<a class="btn btn-wa btn-block" style="margin-top:16px" href="${url}" target="_blank" rel="noopener">Send my order on WhatsApp</a>
           <p class="small muted" style="margin-top:8px">Optional: this sends your order details to us right away. We've already been notified.</p>` : ""}
           <div class="step-nav"><a class="btn btn-ghost" href="menu.html">Back to menu</a></div>

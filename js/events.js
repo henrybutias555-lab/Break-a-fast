@@ -174,7 +174,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || "Could not prepare your enquiry.");
-      btn.insertAdjacentHTML("afterend", `<div id="ev-result" class="notice ok"><b>Enquiry ${esc(j.enquiry.ref)} is ready.</b> Tap below to send it to us on WhatsApp.<a class="btn btn-wa btn-block" style="margin-top:10px" href="${waLink(j.message)}" target="_blank" rel="noopener">Open WhatsApp &amp; send</a></div>`);
+      btn.insertAdjacentHTML("afterend", `<div id="ev-result" class="notice ok"><b>Enquiry ${esc(j.enquiry.ref)} is ready.</b> Tap below to send it to us on WhatsApp.<a class="btn btn-wa btn-block" style="margin-top:10px" href="${waLink(j.message)}" target="_blank" rel="noopener">Open WhatsApp &amp; send</a>${j.trackUrl ? `<a class="btn btn-block" style="margin-top:8px" href="${esc(j.trackUrl)}">📍 Track my booking</a><p class="small muted" style="margin:6px 0 0">Bookmark it to check your event date and progress any time.</p>` : ""}</div>`);
       $("#ev-result").scrollIntoView({ behavior: "smooth", block: "center" });
     } catch (err) {
       btn.insertAdjacentHTML("afterend", `<div id="ev-result" class="notice warn"><b>${esc(err.message)}</b> Please check your internet and try again.</div>`);

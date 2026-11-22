@@ -73,7 +73,8 @@
     ["menu.html", "Menu"],
     ["events.html", "Events & Catering"],
     ["about.html", "About"],
-    ["contact.html", "Contact"]
+    ["contact.html", "Contact"],
+    ["track.html", "Track order"]
   ];
   function currentPage() {
     const f = location.pathname.split("/").pop() || "index.html";

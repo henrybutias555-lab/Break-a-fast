@@ -209,7 +209,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || "Could not place your order.");
       const orders = store.get("baf_orders_v1", {});
-      orders[j.order.ref] = { ...j.order, token: j.token, verifyUrl: j.verifyUrl, message: j.message, status: "Awaiting Invoice" };
+      orders[j.order.ref] = { ...j.order, token: j.token, verifyUrl: j.verifyUrl, message: j.message, trackUrl: j.trackUrl, status: "Awaiting Invoice" };
       store.set("baf_orders_v1", orders);
       Cart.clear();
       location.href = "order.html?ref=" + encodeURIComponent(j.order.ref);
