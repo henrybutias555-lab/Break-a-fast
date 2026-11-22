@@ -263,8 +263,9 @@ function createApp(cfg) {
 
   /* ---------- verify page ---------- */
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  function progressBox(x, code, base) {
+  function progressBox(x, code, base, cur = "") {
     if (!x || !code || !base) return "";
+    const curR = RANK[cur] || 0;
     const first = (x.t === "e" ? x.n : x.c.n).split(" ")[0], phone = x.t === "e" ? x.p : x.c.p, isE = x.t === "e", pick = !isE && x.c.f !== "Delivery";
     const when = niceDate(isE ? x.d : x.c.d);
     const msgs = {
@@ -273,16 +274,17 @@ function createApp(cfg) {
       dn: isE ? `Hello ${first}, thank you for celebrating with Break-a-Fast! We hope you and your guests enjoyed everything (booking ${x.ref}).` : `Hello ${first}, your order ${x.ref} has been ${pick ? "picked up" : "delivered"}. Enjoy, and thank you for choosing Break-a-Fast!`
     };
     const btn = (id, icon) => { const t = trackUrl(base, code, id), m = msgs[id] + "\n\n📍 Track your " + (isE ? "booking" : "order") + ":\n" + t;
-      return `<a class="pg" data-s="${id}" target="_blank" rel="noopener" href="https://wa.me/233${esc(phone.slice(1))}?text=${encodeURIComponent(m)}">${icon} ${esc(progLabel(x, id))}</a>`; };
+      return `<a class="pg${curR >= RANK[id] ? " done" : ""}" data-s="${id}" target="_blank" rel="noopener" href="https://wa.me/233${esc(phone.slice(1))}?text=${encodeURIComponent(m)}">${icon} ${esc(progLabel(x, id))}</a>`; };
     return `<details class="owner" open><summary>Owner: update order progress</summary>
-      <p style="margin:6px 0 10px;font-size:.9rem">Tap a step when it happens. It turns green on the customer's tracker and opens their WhatsApp chat with an update to send.</p>
+      <p style="margin:6px 0 4px;font-size:.95rem"><b>Current status:</b> ${esc(cur === "dn" || cur === "od" || cur === "pr" ? progLabel(x, cur) : { c: "Payment confirmed", pd: "Customer reported payment", i: "Invoice sent" }[cur] || "Order placed")}</p>
+      <p style="margin:0 0 10px;font-size:.9rem">Tap a step when it happens. It turns green on the customer's tracker and opens their WhatsApp chat with an update to send.</p>
       <div class="pgs">${btn("pr", "👩‍🍳")}${btn("od", isE ? "🎪" : pick ? "🛍️" : "🚚")}${btn("dn", "✅")}</div><div id="pg-msg" style="font-size:.85rem;color:#2f7d4a;margin-top:6px"></div></details>
       <script>document.querySelectorAll(".pg").forEach(function(a){a.addEventListener("click",async function(ev){ev.preventDefault();var m=document.getElementById("pg-msg"),w=window.open("about:blank","_blank");
       try{var r=await fetch("/api/progress",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:${JSON.stringify(code)},k:${JSON.stringify(ownerKey(code))},s:a.dataset.s})});var j=await r.json();if(!r.ok)throw new Error(j.error||"Could not save");
       a.classList.add("done");m.style.color="#2f7d4a";m.textContent="✓ "+a.textContent.trim()+" saved. Send the WhatsApp message so the customer gets the update.";if(w)w.location.href=a.href;else location.href=a.href;}
       catch(e){if(w)w.close();m.style.color="#b3261e";m.textContent="✗ "+e.message+(/cancel/i.test(e.message)?" Refresh this page.":"");}});});</script>`;
   }
-  function verifyPage(x, codeForInvoice = "", owner = false, base = "") {
+  function verifyPage(x, codeForInvoice = "", owner = false, base = "", cur = "") {
     const row = (k, v) => `<tr><th>${esc(k)}</th><td>${v}</td></tr>`;
     let body;
     if (!x) {
@@ -312,7 +314,7 @@ function createApp(cfg) {
           document.getElementById("cf").addEventListener("submit",async(e)=>{e.preventDefault();const f=e.target,m=document.getElementById("cf-msg");m.textContent="Checking…";
             try{const r=await fetch("/api/confirm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:${JSON.stringify(codeForInvoice)},k:${JSON.stringify(owner ? ownerKey(codeForInvoice) : "")},amt:f.amt?f.amt.value:"",pm:f.pm?f.pm.value:""})});
             const j=await r.json();if(!r.ok)throw new Error(j.error||"Could not confirm");location.href=j.receipt;}catch(err){m.textContent=err.message;}});
-          </script>${progressBox(x, codeForInvoice.includes(".") ? shortCode(x) : codeForInvoice, base)}` : ""}`;
+          </script>${progressBox(x, codeForInvoice.includes(".") ? shortCode(x) : codeForInvoice, base, cur)}` : ""}`;
     } else {
       const m = method(x.pm);
       body = `<div class="ok">✔ GENUINE EVENT ENQUIRY</div><p class="sub">Created by the website on ${esc(new Date(x.at).toLocaleString("en-GB", { timeZone: "UTC" }))} GMT</p>
@@ -338,7 +340,7 @@ function createApp(cfg) {
           document.getElementById("cf").addEventListener("submit",async(e)=>{e.preventDefault();const f=e.target,m=document.getElementById("cf-msg");m.textContent="Checking…";
             try{const r=await fetch("/api/confirm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:${JSON.stringify(codeForInvoice)},k:${JSON.stringify(owner ? ownerKey(codeForInvoice) : "")},amt:f.amt?f.amt.value:"",pm:f.pm?f.pm.value:""})});
             const j=await r.json();if(!r.ok)throw new Error(j.error||"Could not confirm");location.href=j.receipt;}catch(err){m.textContent=err.message;}});
-          </script>${progressBox(x, codeForInvoice.includes(".") ? shortCode(x) : codeForInvoice, base)}` : ""}`;
+          </script>${progressBox(x, codeForInvoice.includes(".") ? shortCode(x) : codeForInvoice, base, cur)}` : ""}`;
     }
     return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
   <title>Verify order | Break-a-Fast</title>
@@ -386,7 +388,7 @@ function createApp(cfg) {
   async function getStatus(ref) {
     if (statusCache.has(ref)) return statusCache.get(ref);
     let s = "";
-    if (KV) { try { s = (await KV.get("st:" + ref)) || ""; } catch (e) { console.error("status read failed:", e.message); return ""; } }
+    if (KV) { try { s = (await KV.get("st:" + ref)) || ""; } catch (e) { console.error("status read failed:", e.message); try { s = (await KV.get("st:" + ref)) || ""; } catch (e2) { return ""; } } }
     else try { if (await storeReady()) { s = (await storeCall({ action: "get", ref })).trim(); if (!/^(i|pd|c|pr|od|dn|x)$/.test(s)) s = ""; } } catch (e) { return ""; }
     if (statusCache.size > 5000) statusCache.clear();
     statusCache.set(ref, s); return s;
@@ -749,7 +751,7 @@ draw(); setTimeout(draw,300);
     const recent = w.filter((t) => now - t < 10 * 60 * 1000);
     recent.push(now); hits.set(ip, recent);
     if (hits.size > 5000) hits.clear();
-    return recent.length > 40;
+    return recent.length > 120;
   }
 
   /* ---------- request handler (platform-neutral) ----------
@@ -767,8 +769,8 @@ draw(); setTimeout(draw,300);
       if (req.method === "GET" && p.startsWith("/v/")) {
         const t = decodeURIComponent(p.slice(3)).replace(/[^0-9A-Za-z._-]/g, "");
         const k = new URLSearchParams(req.search || "").get("k");
-        const xv = t.includes(".") ? open(t) : openShort(t), cx = xv && (await getStatus(xv.ref)) === "x";
-        return { ...out(200, await markCx(verifyPage(xv, t, okOwner(t, k) && !cx, base), xv), "text/html"), headers: {} };
+        const xv = t.includes(".") ? open(t) : openShort(t), cur = xv ? await getStatus(xv.ref) : "", cx = cur === "x";
+        return { ...out(200, await markCx(verifyPage(xv, t, okOwner(t, k) && !cx, base, cur), xv), "text/html"), headers: {} };
       }
       if (req.method === "GET" && p.startsWith("/t/")) {
         const t = decodeURIComponent(p.slice(3)).replace(/[^0-9A-Za-z._-]/g, "");
@@ -806,7 +808,7 @@ draw(); setTimeout(draw,300);
         return { ...out(200, await markCx(invoicePage(xi, false, xi ? shortCode(xi) : "", { owner: t.includes("."), base }), xi), "text/html"), headers: {} };
       }
       if (req.method === "POST" && p.startsWith("/api/")) {
-        if (limited(req.ip || "?")) return out(429, { error: "Too many requests. Please wait a few minutes." });
+        if (p !== "/api/status" && p !== "/api/progress" && limited(req.ip || "?")) return out(429, { error: "Too many requests. Please wait a few minutes." });
         need((req.bodyText || "").length <= 20000, "Request too large.");
         let b;
         try { b = JSON.parse(req.bodyText || "{}"); } catch (e) { throw new Bad("Invalid request."); }
@@ -860,8 +862,9 @@ draw(); setTimeout(draw,300);
           const x = openShort(code); need(x, "This order link is not valid.");
           need(["pr", "od", "dn"].includes(b.s), "Unknown step.");
           need((await getStatus(x.ref)) !== "x", "The customer cancelled this order.");
-          waits.push(setStatus(x.ref, b.s));
-          return out(200, { ok: true });
+          await setStatus(x.ref, b.s);
+          console.log("progress", x.ref, b.s, "→ now", await getStatus(x.ref));
+          return out(200, { ok: true, now: await getStatus(x.ref) });
         }
         if (p === "/api/cancel") {
           const t = String(b.code || "").replace(/[^0-9A-Za-z._-]/g, "");

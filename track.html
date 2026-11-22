@@ -74,14 +74,18 @@
     }
     render({});
     const codes = orders.map(codeOf).filter(Boolean);
-    if (codes.length) BAF.api("/api/status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ codes }) })
-      .then((r) => r.json()).then((j) => {
+    const note = (t) => { const n = document.getElementById("live-note"); if (n) n.innerHTML = t; };
+    if (codes.length) document.getElementById("list").insertAdjacentHTML("beforebegin", `<p id="live-note" class="small muted" style="margin:0 0 10px">Checking the latest status…</p>`);
+    const load = (tries) => BAF.api("/api/status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ codes }) })
+      .then((r) => { if (!r.ok) throw new Error("status " + r.status); return r.json(); }).then((j) => {
+        note("✓ Latest status");
         const live = (j && j.statuses) || {};
         let changed = false;
         orders.forEach((o) => { if (live[codeOf(o)] === "x" && o.status !== "Cancelled") { all[o.ref].status = "Cancelled"; changed = true; } });
         if (changed) store.set("baf_orders_v1", all);
         render(live);
-      }).catch(() => {});
+      }).catch(() => { if (tries > 0) { note("Still checking the latest status…"); setTimeout(() => load(tries - 1), 4000); } else note(`Couldn't load the latest status. <a href="track.html">Try again</a> or tap Track on an order.`); });
+    if (codes.length) load(3);
     document.getElementById("go").addEventListener("submit", (e) => {
       e.preventDefault();
       const v = document.getElementById("link").value.trim(), f = document.getElementById("link").closest(".field");
