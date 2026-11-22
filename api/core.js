@@ -421,8 +421,10 @@ body.pdfmode .top,body.pdfmode .cols{display:flex}body.pdfmode .cols{display:gri
   <label>Paid earlier (GH₵)<input id="prev" autocomplete="off" type="number" min="0" step="1" inputmode="decimal" placeholder="0"></label>` : ""}
   ${data.custom ? `<label>Quoted price (GH₵)<input id="quote" autocomplete="off" type="number" min="0" step="1" inputmode="decimal" placeholder="Custom quote"></label>` : ""}
   <label>Note on invoice (optional)<textarea id="noteIn" autocomplete="off" rows="2" placeholder="e.g. Delivery to East Legon, set-up from 2pm"></textarea></label>
-  <div class="btns"><button id="share" type="button" style="background:#6f5547">📤 Share PDF file</button><button id="pdf" type="button">⬇ Download PDF</button><a class="wa" id="wa" target="_blank" rel="noopener" style="background:#1fa855">💬 Send to customer (opens their chat)</a><button id="print" type="button" style="background:#6f5547">Print</button></div>
-  <div style="font-size:.8rem;color:#6f5547" id="tip">Tap <b>Send to customer</b>: WhatsApp opens in the customer's chat with the message and a link to view/download this ${DOC.toLowerCase()} as a PDF.</div>
+  <div class="btns">${R
+    ? `<button id="share" type="button" style="background:#1fa855">📤 Send receipt PDF to ${esc(name.split(" ")[0])}</button><button id="pdf" type="button">⬇ Download PDF</button><a id="wa" hidden></a>`
+    : `<button id="share" type="button" style="background:#6f5547">📤 Share PDF file</button><button id="pdf" type="button">⬇ Download PDF</button><a class="wa" id="wa" target="_blank" rel="noopener" style="background:#1fa855">💬 Send to customer (opens their chat)</a>`}<button id="print" type="button" style="background:#6f5547">Print</button></div>
+  <div style="font-size:.8rem;color:#6f5547" id="tip">${R ? `Tap <b>Send receipt PDF</b>, choose <b>WhatsApp</b>, then tap the customer (their number <b>${esc(phone)}</b> is copied, so you can paste it in WhatsApp's search).` : `Tap <b>Send to customer</b>: WhatsApp opens in the customer's chat with the message and a link to view/download this ${DOC.toLowerCase()} as a PDF.`}</div>
 </div>
 <div class="sheet">
   <img class="wm" src="${LOGOS.watermark || esc(site) + "/assets/img/logo-watermark.jpg"}" alt="">
@@ -442,6 +444,7 @@ body.pdfmode .top,body.pdfmode .cols{display:flex}body.pdfmode .cols{display:gri
   <p class="terms">${esc(terms)}</p>
 </div>
 ${RO ? `<div class="bar"><button class="pdfb" type="button" id="pdf2" style="flex:1">⬇ Download ${R ? "receipt" : "invoice"} PDF</button><button id="share2" hidden></button><a id="wa2" hidden></a></div>`
+      : R ? `<div class="bar"><button class="pdfb" type="button" id="pdf2">⬇ PDF</button><button class="wa" type="button" id="share2">📤 Send receipt PDF</button><a id="wa2" hidden></a></div>`
       : `<div class="bar"><button class="pdfb" type="button" id="pdf2">⬇ PDF</button><a class="wa" id="wa2" target="_blank" rel="noopener">💬 Send to customer</a><button id="share2" hidden></button></div>`}
 <script>
 const D=${JSON.stringify(data).replace(/</g, "\\u003c")};
@@ -527,13 +530,15 @@ $("pdf").addEventListener("click",async()=>{
 });
 async function sharePdf(btn){
   if(!ready()) return;
+  try{ navigator.clipboard && navigator.clipboard.writeText(String(D.phone)); }catch(e){}
   const done=busy(btn,"Preparing…");
   try{
     const blob=await makePdf("blob");
     const file=new File([blob],D.doc+"-"+D.ref+".pdf",{type:"application/pdf"});
     const text=decodeURIComponent(($("wa").getAttribute("href")||"").split("?text=")[1]||"");
     if(navigator.canShare&&navigator.canShare({files:[file]})){
-      await navigator.share({files:[file],text,title:D.doc+" "+D.ref});
+      await navigator.share(D.receipt ? {files:[file],title:D.doc+" "+D.ref} : {files:[file],text,title:D.doc+" "+D.ref});
+      $("tip").innerHTML="Sent to the share screen. Customer's number "+D.phone+" was copied: paste it in WhatsApp's search if they're not in recent chats.";
     } else {
       const u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download=file.name;document.body.appendChild(a);a.click();a.remove();
       $("tip").textContent="Your phone can't share files directly here, so the PDF was downloaded. WhatsApp is opening: attach the PDF in the chat.";
