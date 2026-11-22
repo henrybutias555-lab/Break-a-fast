@@ -380,10 +380,12 @@ function createApp(cfg) {
     const ctrl = new AbortController(); setTimeout(() => ctrl.abort(), 8000);
     return (await fetch(ALERT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ key: ALERT_KEY, ...body }), redirect: "follow", signal: ctrl.signal })).text();
   }
+  const KV = cfg.KV || null;
   async function getStatus(ref) {
     if (statusCache.has(ref)) return statusCache.get(ref);
     let s = "";
-    try { if (await storeReady()) { s = (await storeCall({ action: "get", ref })).trim(); if (!/^(i|pd|c|pr|od|dn|x)$/.test(s)) s = ""; } } catch (e) { return ""; }
+    if (KV) { try { s = (await KV.get("st:" + ref)) || ""; } catch (e) { console.error("status read failed:", e.message); return ""; } }
+    else try { if (await storeReady()) { s = (await storeCall({ action: "get", ref })).trim(); if (!/^(i|pd|c|pr|od|dn|x)$/.test(s)) s = ""; } } catch (e) { return ""; }
     if (statusCache.size > 5000) statusCache.clear();
     statusCache.set(ref, s); return s;
   }
@@ -391,8 +393,11 @@ function createApp(cfg) {
     const cur = await getStatus(ref);
     if (cur === "x" || (s !== "x" && (RANK[cur] || 0) >= RANK[s])) return;   // never go backwards
     statusCache.set(ref, s);
+    if (KV) { try { await KV.set("st:" + ref, s); } catch (e) { console.error("status save failed:", e.message); } return; }
     try { if (await storeReady()) await storeCall({ action: "set", ref, s }); } catch (e) { console.error("status save failed:", e.message); }
   }
+  const CX_BANNER = `<div style="background:#b3261e;color:#fff;padding:14px 16px;font:800 1.05rem system-ui,sans-serif;text-align:center;position:relative;z-index:50">❌ CANCELLED BY THE CUSTOMER · do not prepare or take payment for this order</div>`;
+  const markCx = async (html, x) => (x && (await getStatus(x.ref)) === "x") ? html.replace("<body>", "<body>" + CX_BANNER) : html;
   const bestStage = (a, b) => (a === "x" || b === "x") ? "x" : ((RANK[a] || 0) >= (RANK[b] || 0) ? a : b);
 
   /* ---------- customer tracking page ---------- */
@@ -458,7 +463,7 @@ h1{margin:0 0 4px;color:#3b1f14;font-size:1.5rem}.ref{color:#6f5547}.big{font-si
       <div class="card"><ol class="tl">${steps.map((s, i) => `<li class="${s[2] ? "done" : i === nowIdx ? "now" : ""}"><span><b>${esc(s[0])}</b>${esc(s[1])}</span></li>`).join("")}</ol></div>
       <div class="card"><b>${isE ? "Booking" : "Items"}</b>${what}</div>
       <a class="btn" href="https://wa.me/${esc(C.whatsappIntl)}?text=${encodeURIComponent("Hello Break-a-Fast! About my order " + x.ref + ":")}">Questions? Chat on WhatsApp</a>
-      <p class="muted" style="text-align:center;margin-top:14px">We send you a new link on WhatsApp at each step. Open the newest one to see your latest progress.</p>${cancelBox}`);
+      <p class="muted" style="text-align:center;margin-top:14px">Save this link: it always shows your latest progress.</p>${cancelBox}`);
   }
 
   /* ---------- printable invoice (owner opens it from the email alert) ---------- */
@@ -754,7 +759,8 @@ draw(); setTimeout(draw,300);
       if (req.method === "GET" && p.startsWith("/v/")) {
         const t = decodeURIComponent(p.slice(3)).replace(/[^0-9A-Za-z._-]/g, "");
         const k = new URLSearchParams(req.search || "").get("k");
-        return { ...out(200, verifyPage(t.includes(".") ? open(t) : openShort(t), t, okOwner(t, k), base), "text/html"), headers: {} };
+        const xv = t.includes(".") ? open(t) : openShort(t);
+        return { ...out(200, await markCx(verifyPage(xv, t, okOwner(t, k), base), xv), "text/html"), headers: {} };
       }
       if (req.method === "GET" && p.startsWith("/t/")) {
         const t = decodeURIComponent(p.slice(3)).replace(/[^0-9A-Za-z._-]/g, "");
@@ -779,17 +785,17 @@ draw(); setTimeout(draw,300);
           if (x && kind === "r" && x.t === "e" && !x.pr) x = { ...x, pr: { amt: Number(r) || 0, k: "other", pm: x.pm, at: new Date().toISOString() } };
           if (x && kind === "r" && x.t === "o" && !x.py) x = { ...x, py: { txn: "", from: "", s: "", at: new Date().toISOString() } };
         }
-        return { ...out(200, invoicePage(x, kind === "r", x ? shortCode(x) : "", { preset: pre || {}, base }), "text/html"), headers: {} };
+        return { ...out(200, await markCx(invoicePage(x, kind === "r", x ? shortCode(x) : "", { preset: pre || {}, base }), x), "text/html"), headers: {} };
       }
       if (req.method === "GET" && p.startsWith("/r/")) {
         const t = decodeURIComponent(p.slice(3)).replace(/[^0-9A-Za-z._-]/g, "");
         const xr = t.includes(".") ? open(t) : openShort(t);
-        return { ...out(200, invoicePage(xr, true, xr ? shortCode(xr) : "", { owner: t.includes("."), base }), "text/html"), headers: {} };
+        return { ...out(200, await markCx(invoicePage(xr, true, xr ? shortCode(xr) : "", { owner: t.includes("."), base }), xr), "text/html"), headers: {} };
       }
       if (req.method === "GET" && p.startsWith("/i/")) {
         const t = decodeURIComponent(p.slice(3)).replace(/[^0-9A-Za-z._-]/g, "");
         const xi = t.includes(".") ? open(t) : openShort(t);
-        return { ...out(200, invoicePage(xi, false, xi ? shortCode(xi) : "", { owner: t.includes("."), base }), "text/html"), headers: {} };
+        return { ...out(200, await markCx(invoicePage(xi, false, xi ? shortCode(xi) : "", { owner: t.includes("."), base }), xi), "text/html"), headers: {} };
       }
       if (req.method === "POST" && p.startsWith("/api/")) {
         if (limited(req.ip || "?")) return out(429, { error: "Too many requests. Please wait a few minutes." });
@@ -806,6 +812,7 @@ draw(); setTimeout(draw,300);
           const tk = String(b.t || "").replace(/[^0-9A-Za-z._-]/g, "");
           const o = b.token ? open(b.token) : tk ? (tk.includes(".") ? open(tk) : openShort(tk)) : null;
           need(o && o.t === "o", "This order could not be verified. Please message us on WhatsApp.");
+          need((await getStatus(o.ref)) !== "x", "This order was cancelled. Please place a new order or message us on WhatsApp.");
           const txn = str(b.txn, 40), from = str(b.from, 40);   // optional (no longer asked on the site)
           if (o.c.tm === PENDING) {
             const tm = str(b.time, 40);
@@ -834,6 +841,7 @@ draw(); setTimeout(draw,300);
           need(okOwner(code, b.k), "Please open this page from the link in your email.");
           const x = openShort(code); need(x, "This order link is not valid.");
           need(["pr", "od", "dn"].includes(b.s), "Unknown step.");
+          need((await getStatus(x.ref)) !== "x", "The customer cancelled this order.");
           waits.push(setStatus(x.ref, b.s));
           return out(200, { ok: true });
         }
@@ -855,6 +863,7 @@ draw(); setTimeout(draw,300);
           need(okOwner(t, b.k), "Please open this page from the link in your email.");
           const x = t.includes(".") ? open(t) : openShort(t);
           need(x, "This order link is not valid.");
+          need((await getStatus(x.ref)) !== "x", "The customer cancelled this order, so it can't be confirmed.");
           let y;
           if (x.t === "e") {
             const amt = Math.round(Number(b.amt) * 100) / 100;
@@ -871,6 +880,7 @@ draw(); setTimeout(draw,300);
           const t = String(b.t || "").replace(/[^0-9A-Za-z._-]/g, "");
           const e = t.includes(".") ? open(t) : openShort(t);
           need(e && e.t === "e", "This booking link is not valid. Please message us on WhatsApp.");
+          need((await getStatus(e.ref)) !== "x", "This booking was cancelled. Please message us on WhatsApp.");
           const k = ["deposit", "full", "other"].includes(b.kind) ? b.kind : "other";
           const amt = Math.round(Number(b.amount) * 100) / 100;
           need(amt > 0 && amt <= 1000000, "Please enter the amount you paid.");
