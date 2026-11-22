@@ -11,7 +11,7 @@
 <meta name="theme-color" content="#3b1f14">
 <link rel="icon" href="assets/img/favicon.png">
 <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Nunito:wght@400;700;800&family=Pacifico&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=ea8e8002">
+<link rel="stylesheet" href="css/styles.css?v=ddfe304a">
 <script src="js/config.js?v=4615361c" defer></script>
 <script src="js/products.js?v=8b8feca8" defer></script>
 <script src="js/app.js?v=01941a60" defer></script>
@@ -51,16 +51,37 @@
     const today = new Date().toISOString().slice(0, 10);
     const nice = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
     orders.sort((a, b) => (a.c.d < b.c.d ? -1 : 1));
-    document.getElementById("list").innerHTML = orders.length ? orders.map((o) => {
-      const d = Math.round((Date.parse(o.c.d) - Date.parse(today)) / 864e5);
-      const cx = o.status === "Cancelled";
-      const cd = cx ? "cancelled" : d > 1 ? `in ${d} days` : d === 1 ? "tomorrow" : d === 0 ? "today" : "completed";
-      const link = o.trackUrl || (o.verifyUrl ? o.verifyUrl.replace("/v/", "/t/").split("?")[0] : "");
-      return `<div class="review-block"><h3 style="margin:0">${esc(o.ref)} <span class="status ${cx ? "awaiting" : d >= 0 ? "pending" : "awaiting"}">${cd}</span></h3>
-        <div class="small">${esc(nice(o.c.d))} · ${esc(o.c.f)}</div>
-        <div class="small muted">${(o.it || []).map((i) => esc(i[3] + " × " + i[0])).join(", ")}</div>
-        ${link ? `<a class="btn btn-sm" style="margin-top:8px" href="${esc(link)}">${cx ? "View" : "📍 Track or cancel"}</a>` : ""}</div>`;
-    }).join("") : `<p class="muted" style="margin:0">No orders placed from this phone yet. Event bookings and orders from other phones: use the tracking link we sent you.</p>`;
+    const codeOf = (o) => { const l = o.trackUrl || o.verifyUrl || ""; const m = l.match(/\/[tv]\/([0-9A-Za-z]+)/); return m ? m[1] : ""; };
+    const LABEL = { i: ["Invoice sent", "pending"], pd: ["Payment being checked", "pending"], c: ["Paid", "ok"], pr: ["Preparing", "ok"], dn: ["", "ok"], x: ["Cancelled", "awaiting"] };
+    function render(live) {
+      document.getElementById("list").innerHTML = orders.length ? orders.map((o) => {
+        const d = Math.round((Date.parse(o.c.d) - Date.parse(today)) / 864e5), st = live[codeOf(o)] || (o.status === "Cancelled" ? "x" : "");
+        const del = o.c.f === "Delivery";
+        let txt, cls;
+        if (st === "x") [txt, cls] = ["cancelled", "cx"];
+        else if (st === "dn") [txt, cls] = [del ? "delivered ✓" : "picked up ✓", "ok"];
+        else if (st === "od") [txt, cls] = [del ? "on the way" : "ready for pick-up", "ok"];
+        else if (st === "pr") [txt, cls] = ["preparing", "ok"];
+        else [txt, cls] = [d > 1 ? `in ${d} days` : d === 1 ? "tomorrow" : d === 0 ? "today" : "completed", d >= 0 ? "pending" : "awaiting"];
+        const sub2 = st && LABEL[st] && !["x", "dn", "pr"].includes(st) ? ` · ${LABEL[st][0]}` : "";
+        const done = st === "x" || st === "dn";
+        const link = o.trackUrl || (o.verifyUrl ? o.verifyUrl.replace("/v/", "/t/").split("?")[0] : "");
+        return `<div class="review-block"><h3 style="margin:0">${esc(o.ref)} <span class="status ${cls}">${esc(txt)}</span></h3>
+          <div class="small">${esc(nice(o.c.d))} · ${esc(o.c.f)}${esc(sub2)}</div>
+          <div class="small muted">${(o.it || []).map((i) => esc(i[3] + " × " + i[0])).join(", ")}</div>
+          ${link ? `<a class="btn btn-sm" style="margin-top:8px" href="${esc(link)}">${done ? "View" : st && st !== "i" && st !== "pd" && st !== "c" ? "📍 Track" : "📍 Track or cancel"}</a>` : ""}</div>`;
+      }).join("") : `<p class="muted" style="margin:0">No orders placed from this phone yet. Event bookings and orders from other phones: use the tracking link we sent you.</p>`;
+    }
+    render({});
+    const codes = orders.map(codeOf).filter(Boolean);
+    if (codes.length) BAF.api("/api/status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ codes }) })
+      .then((r) => r.json()).then((j) => {
+        const live = (j && j.statuses) || {};
+        let changed = false;
+        orders.forEach((o) => { if (live[codeOf(o)] === "x" && o.status !== "Cancelled") { all[o.ref].status = "Cancelled"; changed = true; } });
+        if (changed) store.set("baf_orders_v1", all);
+        render(live);
+      }).catch(() => {});
     document.getElementById("go").addEventListener("submit", (e) => {
       e.preventDefault();
       const v = document.getElementById("link").value.trim(), f = document.getElementById("link").closest(".field");

@@ -848,6 +848,12 @@ draw(); setTimeout(draw,300);
           waits.push(setStatus(openShort(code).ref, b.kind === "r" ? "c" : "i"));
           return out(200, { ok: true, url: `${base}/d/${body}~${docSig(body)}` });
         }
+        if (p === "/api/status") {   // live status for the "Track order" list (codes come from the customer's own links)
+          const codes = (Array.isArray(b.codes) ? b.codes : []).slice(0, 40).map((c) => String(c).replace(/[^0-9A-Za-z]/g, "")).filter(Boolean);
+          const statuses = {};
+          await Promise.all(codes.map(async (c) => { const x = openShort(c); if (x) statuses[c] = (await getStatus(x.ref)) || ""; }));
+          return out(200, { statuses });
+        }
         if (p === "/api/progress") {
           const code = String(b.code || "").replace(/[^0-9A-Za-z]/g, "");
           need(okOwner(code, b.k), "Please open this page from the link in your email.");
