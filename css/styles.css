@@ -361,3 +361,11 @@ body.no-float .wa-float { display: none; }
 .dmy select { padding-left: 10px; padding-right: 26px; background-position: right 8px center; }
 
 .field.invalid .hint { display: none; }
+
+/* custom bake request */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font: inherit; font-weight: 700; font-size: .92rem; padding: 8px 14px; border-radius: 999px; border: 2px solid var(--line, #e8d6bd); background: #fff; color: var(--brown, #3b1f14); cursor: pointer; }
+.chip:hover, .chip:focus-visible { border-color: var(--berry, #a8174f); color: var(--berry, #a8174f); }
+.request-cta { display: flex; gap: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap; background: linear-gradient(135deg, #fff3df, #fde8f0); border: 2px dashed #e7b9cc; border-radius: 18px; padding: 18px; margin: 24px 0; }
+.request-cta h2 { margin: 0 0 4px; font-size: 1.3rem; }
+.request-cta p { margin: 0; }

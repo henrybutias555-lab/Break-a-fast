@@ -225,6 +225,25 @@ function createApp(cfg) {
     };
   }
 
+  function buildRequest(b) {
+    const what = str(b.what, 120), qty = str(b.qty, 80), name = str(b.name, 80), phone = normPhone(b.phone);
+    need(what.length >= 2, "Please tell us what you'd like baked.");
+    need(qty.length >= 1, "Please tell us how many or what size.");
+    need(name.length >= 2, "Please enter your name.");
+    need(phone, "Please enter a valid Ghana phone number.");
+    need(validDate(b.date), "Please choose a valid date.");
+    const notice = (C.orderHours && C.orderHours.minNoticeDays) || 3;
+    need(b.date >= new Date(Date.now() + notice * 864e5).toISOString().slice(0, 10), `Custom bakes need at least ${notice} days' notice. Please choose a later date.`);
+    const f = b.fulfilment === "Pick-up" ? "Pick-up" : "Delivery";
+    return { t: "q", ref: makeRef("REQ"), at: new Date().toISOString(), w: what, q: qty, bu: str(b.budget, 40), de: str(b.details, 600),
+      d: b.date, f, a: f === "Delivery" ? str(b.address, 160) : "", n: name, p: phone };
+  }
+  function requestText(x) {
+    return [`Hello Break-a-Fast! I'd like to request a custom bake.`, ``, `Reference: ${x.ref}`, `Item: ${x.w}`, `How many / size: ${x.q}`,
+      ...(x.de ? [`Details: ${x.de}`] : []), ...(x.bu ? [`Budget: ${x.bu}`] : []),
+      `Needed: ${niceDate(x.d)} · ${x.f}${x.a ? " (" + x.a + ")" : ""}`, `Name: ${x.n}`, ``, `Please send me a price. Thank you!`].join("\n");
+  }
+
   const unitOf = (i) => (i[4] != null && i[3] ? i[4] / i[3] : null);
   const itemTitle = (i) => `${i[0]}${i[2] ? " (" + i[2] + ")" : ""}`;
   const itemCalc = (i) => unitOf(i) != null ? `${i[3]} × ${i[1]} at ${money(unitOf(i))} = ${money(i[4])}` : `${i[3]} × ${i[1]}`;
@@ -706,6 +725,18 @@ draw(); setTimeout(draw,300);
   function alertHtml(title, color, x, url, inv) {
     const row = (k, v) => `<tr><td style="padding:6px 10px;color:#6f5547;border-bottom:1px solid #eee;vertical-align:top">${esc(k)}</td><td style="padding:6px 10px;border-bottom:1px solid #eee">${v}</td></tr>`;
     let rows = "";
+    if (x.t === "q") {
+      const first = x.n.split(" ")[0];
+      const reply = `Hello ${first}, thank you for your custom bake request ${x.ref} (${x.w}, ${x.q}) for ${niceDate(x.d)}. `;
+      rows = row("Item", `<b style="font-size:17px;color:#7a4a9e">${esc(x.w)}</b>`) + row("How many / size", esc(x.q)) + (x.de ? row("Details", esc(x.de)) : "") +
+        (x.bu ? row("Customer's budget", esc(x.bu)) : "") + row("Needed on", esc(niceDate(x.d))) + row(x.f, x.f === "Delivery" ? esc(x.a || "Area not given") : "Pick-up") +
+        row("Name", esc(x.n)) + row("Phone", `<a href="tel:${esc(x.p)}">${esc(x.p)}</a>`);
+      return `<div style="font-family:Arial,sans-serif;max-width:560px">
+      <div style="background:${color};color:#fff;padding:14px 16px;border-radius:10px;font-size:18px;font-weight:bold">${esc(title)}</div>
+      <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:14px">${rows}</table>
+      <p style="margin-top:14px"><a href="https://wa.me/233${esc(x.p.slice(1))}?text=${encodeURIComponent(reply)}" style="background:#1fa855;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">💬 Reply on WhatsApp with a price</a></p>
+      <p style="color:#888;font-size:12px">This request came from the "Request any bake" page on the website. Reply with a price, then ask the customer to pay using the reference ${esc(x.ref)}.</p></div>`;
+    }
     if (x.t === "o") {
       rows = x.it.map((i) => row(itemTitle(i), esc(itemCalc(i)))).join("") + row("TOTAL", `<b style="font-size:18px;color:#a8174f">${money(x.tot)}</b>`) +
         row("Name", esc(x.c.n)) + row("Phone", `<a href="tel:${esc(x.c.p)}">${esc(x.c.p)}</a> · <a href="https://wa.me/233${esc(x.c.p.slice(1))}">WhatsApp</a>`) +
@@ -734,6 +765,7 @@ draw(); setTimeout(draw,300);
     let subject, title, color;
     if (kind === "order") { subject = `🟡 New order ${x.ref} · ${money(x.tot)} · send invoice`; title = `New order ${x.ref}: create and send the invoice`; color = "#c27a12"; }
     else if (kind === "paid") { subject = `🟢 Payment reported ${x.ref} · ${money(x.tot)} · ${method(x.pm).name}${x.py.txn ? " · TXN " + x.py.txn : ""} · ${x.c.tm}`; title = `Customer reported payment for ${x.ref}. Check your ${method(x.pm).name} SMS.`; color = "#2f7d4a"; }
+    else if (kind === "request") { subject = `🧁 Custom bake request ${x.ref} · ${x.w} · ${niceDate(x.d)}`; title = `New custom bake request ${x.ref}: reply with a price on WhatsApp`; color = "#7a4a9e"; }
     else if (kind === "cancelled") { subject = `🔴 CANCELLED ${x.ref} · ${x.t === "e" ? x.ty + " · " + niceDate(x.d) : money(x.tot) + " · " + niceDate(x.c.d)}`; title = `The customer cancelled ${x.ref}. Do not prepare it.`; color = "#b3261e"; }
     else if (kind === "confirmed") { const amt = x.t === "e" ? x.pr.amt : x.tot; subject = `✅ Payment confirmed ${x.ref} · ${money(amt)}`; title = `You confirmed ${money(amt)} received for ${x.ref}.`; color = "#2f7d4a"; }
     else if (kind === "eventpaid") { const k = { deposit: "Deposit", full: "Full payment", other: "Payment" }[x.pr.k] || "Payment"; subject = `🟢 ${k} reported ${x.ref} · ${money(x.pr.amt)} · ${method(x.pr.pm).name} · ${x.ty} ${niceDate(x.d)}`; title = `${k} of ${money(x.pr.amt)} reported for ${x.ref}. Check your ${method(x.pr.pm).name} SMS.`; color = "#2f7d4a"; }
@@ -915,6 +947,11 @@ draw(); setTimeout(draw,300);
           const v = `${base}/v/${shortCode(e)}`;
           waits.push(sendAlert("eventpaid", e2, v, `${base}/r/${seal(e2)}`), setStatus(e.ref, "pd"));
           return out(200, { ok: true, ref: e.ref });
+        }
+        if (p === "/api/request") {
+          const q = buildRequest(b);
+          waits.push(sendAlert("request", q, "", ""));
+          return out(200, { ok: true, ref: q.ref, message: requestText(q) });
         }
         if (p === "/api/event") {
           const e = buildEvent(b), v = `${base}/v/${shortCode(e)}`;

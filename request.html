@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Custom Bake Request | Break-a-Fast Bistro and Bar</title>
+<meta name="description" content="Want something baked that is not on our menu? Croissants, cakes, bread, pastries: request any bake and we will quote you.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Break-a-Fast Bistro &amp; Bar">
+<meta property="og:title" content="Request any bake | Break-a-Fast Bistro &amp; Bar">
+<meta property="og:description" content="Not on the menu? If it can be baked, we can make it. Send your request.">
+<meta property="og:url" content="https://break-a-fast.onrender.com/request.html">
+<meta property="og:image" content="https://break-a-fast.onrender.com/assets/img/share.jpg">
+<meta property="og:image:secure_url" content="https://break-a-fast.onrender.com/assets/img/share.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Break-a-Fast Bistro &amp; Bar">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#3b1f14">
+<link rel="icon" href="assets/img/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Nunito:wght@400;700;800&family=Pacifico&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css?v=76c782bd">
+<script src="js/config.js?v=4615361c" defer></script>
+<script src="js/products.js?v=8b8feca8" defer></script>
+<script src="js/app.js?v=2f5a4673" defer></script>
+<script src="js/request.js?v=52abfbda" defer></script>
+</head>
+<body>
+<main id="main" class="wrap" style="max-width:760px">
+  <div class="page-head">
+    <h1>Request any bake</h1>
+    <p>Don't see what you want on our menu? <b>If it can be baked, we can make it.</b> Tell us what you'd like and we'll send you a price on WhatsApp.</p>
+  </div>
+  <section class="panel">
+    <h2 style="font-size:1.2rem;margin-top:0">Popular ideas</h2>
+    <p class="small muted" style="margin:0 0 10px">Tap one to start, or type your own below.</p>
+    <div class="chips" id="ideas"></div>
+  </section>
+  <section class="panel" style="margin-top:16px">
+    <form class="form" id="req-form" novalidate>
+      <div class="field">
+        <label for="r-what">What would you like?</label>
+        <input id="r-what" name="what" maxlength="120" placeholder="e.g. Butter croissants, chocolate birthday cake" required>
+        <div class="err">Please tell us what you'd like baked.</div>
+      </div>
+      <div class="row-2">
+        <div class="field">
+          <label for="r-qty">How many / what size?</label>
+          <input id="r-qty" name="qty" maxlength="80" placeholder="e.g. 12 pieces, cake for 30 people" required>
+          <div class="err">Please tell us how many or what size.</div>
+        </div>
+        <div class="field">
+          <label for="r-budget">Budget (optional)</label>
+          <input id="r-budget" name="budget" maxlength="40" inputmode="decimal" placeholder="e.g. GH₵300">
+        </div>
+      </div>
+      <div class="field">
+        <label for="r-details">Details (optional)</label>
+        <textarea id="r-details" name="details" maxlength="600" placeholder="Flavour, filling, colours, message on the cake, allergies. Have a picture? Send it on WhatsApp after."></textarea>
+      </div>
+      <div class="row-2">
+        <div class="field">
+          <label for="r-date">When do you need it?</label>
+          <input id="r-date" name="date" type="date" required>
+          <div class="err">Please choose a date at least 3 days from today.</div><div class="hint">Custom bakes need at least 3 days' notice.</div>
+        </div>
+        <div class="field">
+          <label>Delivery or pick-up?</label>
+          <div class="choice">
+            <label><input type="radio" name="fulfilment" value="Delivery" checked> <span>Delivery</span></label>
+            <label><input type="radio" name="fulfilment" value="Pick-up"> <span>Pick-up</span></label>
+          </div>
+        </div>
+      </div>
+      <div class="field" id="r-addr-field">
+        <label for="r-address">Delivery area</label>
+        <input id="r-address" name="address" maxlength="160" placeholder="Area / landmark (helps us quote delivery)">
+      </div>
+      <div class="row-2">
+        <div class="field">
+          <label for="r-name">Your name</label>
+          <input id="r-name" name="name" autocomplete="name" required>
+          <div class="err">Please enter your name.</div>
+        </div>
+        <div class="field">
+          <label for="r-phone">Phone / WhatsApp</label>
+          <input id="r-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="e.g. 020 123 4567" required>
+          <div class="err">Please enter a valid Ghana phone number.</div>
+        </div>
+      </div>
+      <button class="btn btn-block" type="submit">Send my request</button>
+      <p class="small muted" style="margin:0">No payment yet. We'll reply on WhatsApp with a price and a date. Once you're happy, we'll tell you how to pay. See our <a href="terms.html#orders" target="_blank" rel="noopener">Terms &amp; Conditions</a>.</p>
+    </form>
+    <div id="req-result" aria-live="polite"></div>
+  </section>
+</main>
+</body>
+</html>

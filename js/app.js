@@ -72,6 +72,7 @@
     ["index.html", "Home"],
     ["menu.html", "Menu"],
     ["events.html", "Events & Catering"],
+    ["request.html", "Request a bake"],
     ["about.html", "About"],
     ["contact.html", "Contact"],
     ["track.html", "Track order"]
